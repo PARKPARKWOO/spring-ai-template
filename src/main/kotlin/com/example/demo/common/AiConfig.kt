@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 class AiConfig (
     @Value("\${spring.ai.openai.api-key}")
     private val openAiApiKey: String,
-    @Value("\${}")
+    @Value("\${spring.ai.anthropic.api-key}")
     private val anthropicApiKey: String,
 ){
     @Bean

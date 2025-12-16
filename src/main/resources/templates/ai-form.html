@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI API 요청</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem;
+            transition: all 0.3s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .form-check {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .form-check:hover {
+            background-color: #f8f9fa;
+        }
+        .form-check-input:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .result-container {
+            margin-top: 2rem;
+            display: none;
+        }
+        .result-card {
+            margin-top: 1rem;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">
+                    <i class="bi bi-robot"></i> AI API 요청
+                </h2>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-white">
+                        <i class="bi bi-person-circle"></i> <span th:text="${clientName}"></span>
+                    </span>
+                    <button type="button" class="btn btn-sm btn-light" onclick="logout()">
+                        <i class="bi bi-box-arrow-right"></i> 로그아웃
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form id="aiForm" th:action="@{/ai}" th:object="${request}" method="post">
+                    <!-- Prompt 입력 -->
+                    <div class="mb-4">
+                        <label for="userPrompt" class="form-label">
+                            <i class="bi bi-chat-dots"></i> 프롬프트 입력
+                        </label>
+                        <textarea 
+                            class="form-control" 
+                            id="userPrompt" 
+                            th:field="*{userPrompt}"
+                            rows="5" 
+                            placeholder="AI에게 질문하거나 요청할 내용을 입력하세요..."
+                            required></textarea>
+                    </div>
+
+                    <!-- Vendor 복수 선택 -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="bi bi-check2-square"></i> AI 벤더 선택 (복수 선택 가능)
+                        </label>
+                        <div class="border rounded p-3" style="background-color: #f8f9fa;">
+                            <div th:each="vendor : ${vendors}" class="form-check">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    th:id="${'vendor_' + vendor.name()}"
+                                    th:value="${vendor.name()}"
+                                    name="vendor">
+                                <label class="form-check-label" th:for="${'vendor_' + vendor.name()}">
+                                    <span th:text="${vendor.name()}"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">하나 이상의 벤더를 선택해주세요.</small>
+                    </div>
+
+                    <!-- 제출 버튼 -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-send"></i> 요청 보내기
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 결과 표시 영역 -->
+                <div id="resultContainer" class="result-container">
+                    <h4 class="mt-4 mb-3">결과</h4>
+                    <div id="results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('aiForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const userPrompt = formData.get('userPrompt');
+            const vendors = formData.getAll('vendor');
+            
+            if (vendors.length === 0) {
+                alert('최소 하나의 벤더를 선택해주세요.');
+                return;
+            }
+            
+            if (!userPrompt || userPrompt.trim() === '') {
+                alert('프롬프트를 입력해주세요.');
+                return;
+            }
+            
+            const requestBody = {
+                vendor: vendors,
+                userPrompt: userPrompt
+            };
+            
+            try {
+                const response = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('요청 실패');
+                }
+                
+                const results = await response.json();
+                displayResults(results);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('요청 중 오류가 발생했습니다: ' + error.message);
+            }
+        });
+        
+        function displayResults(results) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultsDiv = document.getElementById('results');
+            
+            resultsDiv.innerHTML = '';
+            
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<div class="alert alert-info">결과가 없습니다.</div>';
+            } else {
+                results.forEach(result => {
+                    const card = document.createElement('div');
+                    card.className = 'card result-card';
+                    card.innerHTML = `
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <span class="badge bg-primary">${result.vendor}</span>
+                            </h5>
+                            <p class="card-text">${escapeHtml(result.result)}</p>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(card);
+                });
+            }
+            
+            resultContainer.style.display = 'block';
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+        
+        async function logout() {
+            try {
+                const response = await fetch('/api/client/logout', {
+                    method: 'POST',
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/client/login';
+                } else {
+                    alert('로그아웃에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('로그아웃에 실패했습니다.');
+            }
+        }
+    </script>
+</body>
+</html>
+

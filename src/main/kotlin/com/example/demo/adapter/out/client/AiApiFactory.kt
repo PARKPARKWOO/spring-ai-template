@@ -1,4 +1,4 @@
-package com.example.demo.adapter.client
+package com.example.demo.adapter.out.client
 
 import com.example.demo.model.Vendor
 import org.springframework.stereotype.Component

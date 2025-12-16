@@ -1,4 +1,4 @@
-package com.example.demo.adapter.persistence
+package com.example.demo.adapter.out.persistence
 
 import com.example.demo.model.AiUsageLogs
 import org.springframework.data.jpa.repository.JpaRepository

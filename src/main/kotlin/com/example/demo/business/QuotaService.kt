@@ -1,6 +1,6 @@
 package com.example.demo.business
 
-import com.example.demo.adapter.persistence.QuotaRepository
+import com.example.demo.adapter.out.persistence.QuotaRepository
 import com.example.demo.model.Vendor
 import org.springframework.stereotype.Service
 
