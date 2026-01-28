@@ -1,0 +1,45 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 테스트 환경에서는 create-drop 사용 (H2 인메모리 DB)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+  flyway:
+    enabled: false  # 테스트 환경에서는 Flyway 비활성화 (H2 사용)
+  h2:
+    console:
+      enabled: true
+  # 테스트용 AI API 키 (실제 호출은 하지 않지만 설정 오류 방지)
+  ai:
+    openai:
+      api-key: test-key
+    anthropic:
+      api-key: test-key
+    google:
+      genai:
+        api-key: test-key
+    vertex:
+      ai:
+        gemini:
+          project-id: "test"
+          location: "test"
+    grok:
+      api-key: test-key
+
+# 테스트용 JWT 설정
+jwt:
+  secret: test-secret-key-for-testing-only-at-least-32-characters-long
+  expiration: 86400000
+  refresh-expiration: 604800000
+  header: Authorization
+  prefix: "Bearer "

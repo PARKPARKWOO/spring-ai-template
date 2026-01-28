@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 1rem 1.5rem;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .sidebar .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 sidebar">
+                <div class="p-3">
+                    <h4 class="mb-4">
+                        <i class="bi bi-shield-check"></i> 백오피스
+                    </h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/dashboard">
+                                <i class="bi bi-speedometer2"></i> 대시보드
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/backoffice/clients">
+                                <i class="bi bi-people"></i> Client 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/app-keys">
+                                <i class="bi bi-key"></i> AppKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/api-keys">
+                                <i class="bi bi-key-fill"></i> ApiKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/token-pricing-policies">
+                                <i class="bi bi-currency-dollar"></i> Token 가격 정책
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/ai">
+                                <i class="bi bi-robot"></i> AI 테스트
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/swagger-ui.html" target="_blank">
+                                <i class="bi bi-file-code"></i> API 문서
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4">
+                            <a class="nav-link" href="#" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 col-lg-10 main-content">
+                <!-- Navbar -->
+                <nav class="navbar navbar-expand-lg navbar-light mb-4">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">Client 관리</span>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3" id="clientName">로딩 중...</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Client 생성 카드 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-plus-circle"></i> 새 Client 생성
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="createClientForm">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="clientName" class="form-label">Client 이름 *</label>
+                                    <input type="text" class="form-control" id="clientName" required
+                                           placeholder="예: HectoFinancial">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="clientPassword" class="form-label">비밀번호 *</label>
+                                    <input type="password" class="form-control" id="clientPassword" required
+                                           placeholder="비밀번호 입력">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="clientDescription" class="form-label">설명</label>
+                                    <input type="text" class="form-control" id="clientDescription"
+                                           placeholder="예: 헥토파이낸셜 클라이언트">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-plus"></i> Client 생성
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Client 목록 -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i> Client 목록
+                        </h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadClients()">
+                            <i class="bi bi-arrow-clockwise"></i> 새로고침
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="clientsList">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">로딩 중...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div class="modal fade" id="editClientModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Client 수정</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editClientForm">
+                        <input type="hidden" id="editClientId">
+                        <div class="mb-3">
+                            <label for="editClientName" class="form-label">Client 이름 *</label>
+                            <input type="text" class="form-control" id="editClientName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editClientPassword" class="form-label">비밀번호 (변경 시에만 입력)</label>
+                            <input type="password" class="form-control" id="editClientPassword"
+                                   placeholder="변경하지 않으려면 비워두세요">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editClientDescription" class="form-label">설명</label>
+                            <input type="text" class="form-control" id="editClientDescription">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="updateClient()">수정</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key 매핑 모달 -->
+    <div class="modal fade" id="apiKeyMappingModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">API Key 관리 - <span id="modalClientName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">API Key 연결</label>
+                        <div class="input-group">
+                            <select class="form-select" id="apiKeySelect">
+                                <option value="">API Key 선택...</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="linkApiKey()">
+                                <i class="bi bi-link-45deg"></i> 연결
+                            </button>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>연결된 API Key 목록</h6>
+                    <div id="linkedApiKeysList">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">로딩 중...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // JWT 토큰 가져오기
+        function getToken() {
+            return localStorage.getItem('accessToken');
+        }
+
+        // API 호출 헬퍼
+        async function apiCall(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/client/login';
+                return null;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            };
+
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...(options.headers || {})
+                }
+            };
+
+            try {
+                const response = await fetch(url, mergedOptions);
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    window.location.href = '/client/login';
+                    return null;
+                }
+                return response;
+            } catch (error) {
+                console.error('API call error:', error);
+                return null;
+            }
+        }
+
+        // 로그아웃
+        function logout() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('clientName');
+            window.location.href = '/client/login';
+        }
+
+        // Client 생성
+        document.getElementById('createClientForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('clientName').value;
+            const password = document.getElementById('clientPassword').value;
+            const description = document.getElementById('clientDescription').value;
+
+            const response = await apiCall('/api/backoffice/clients', {
+                method: 'POST',
+                body: JSON.stringify({ name, password, description })
+            });
+
+            if (response && response.ok) {
+                alert('Client가 생성되었습니다.');
+                document.getElementById('createClientForm').reset();
+                loadClients();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'Client 생성에 실패했습니다.');
+            }
+        });
+
+        // Client 수정
+        function editClient(clientId) {
+            const client = clients.find(c => c.id === clientId);
+            if (!client) return;
+
+            document.getElementById('editClientId').value = client.id;
+            document.getElementById('editClientName').value = client.name;
+            document.getElementById('editClientDescription').value = client.description || '';
+            document.getElementById('editClientPassword').value = '';
+
+            const modal = new bootstrap.Modal(document.getElementById('editClientModal'));
+            modal.show();
+        }
+
+        async function updateClient() {
+            const clientId = document.getElementById('editClientId').value;
+            const name = document.getElementById('editClientName').value;
+            const password = document.getElementById('editClientPassword').value;
+            const description = document.getElementById('editClientDescription').value;
+
+            const body = { name, description };
+            if (password) {
+                body.password = password;
+            }
+
+            const response = await apiCall(`/api/backoffice/clients/${clientId}`, {
+                method: 'PUT',
+                body: JSON.stringify(body)
+            });
+
+            if (response && response.ok) {
+                alert('Client가 수정되었습니다.');
+                bootstrap.Modal.getInstance(document.getElementById('editClientModal')).hide();
+                loadClients();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'Client 수정에 실패했습니다.');
+            }
+        }
+
+        // Client 삭제
+        async function deleteClient(clientId) {
+            if (!confirm('정말 이 Client를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            const response = await apiCall(`/api/backoffice/clients/${clientId}`, {
+                method: 'DELETE'
+            });
+
+            if (response && response.ok) {
+                alert('Client가 삭제되었습니다.');
+                loadClients();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'Client 삭제에 실패했습니다.');
+            }
+        }
+
+        let clients = [];
+
+        // Client 목록 로드
+        async function loadClients() {
+            const listElement = document.getElementById('clientsList');
+            listElement.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+
+            const response = await apiCall('/api/backoffice/clients');
+            
+            if (response && response.ok) {
+                const result = await response.json();
+                // ApiResponse 구조: { code, message, data, error }
+                if (result.code === 'SUCCESS' && result.data) {
+                    clients = result.data;
+                    
+                    if (clients.length === 0) {
+                        listElement.innerHTML = '<p class="text-muted text-center">등록된 Client가 없습니다.</p>';
+                        return;
+                    }
+
+                    let html = '<div class="table-responsive"><table class="table table-hover">';
+                    html += '<thead><tr>';
+                    html += '<th>ID</th><th>이름</th><th>설명</th><th>생성일</th><th>수정일</th><th>작업</th>';
+                    html += '</tr></thead><tbody>';
+
+                    clients.forEach(client => {
+                        const createdAt = new Date(client.createdAt).toLocaleString('ko-KR');
+                        const updatedAt = new Date(client.updatedAt).toLocaleString('ko-KR');
+
+                        html += '<tr>';
+                        html += `<td>${client.id}</td>`;
+                        html += `<td>${client.name}</td>`;
+                        html += `<td>${client.description || '-'}</td>`;
+                        html += `<td>${createdAt}</td>`;
+                        html += `<td>${updatedAt}</td>`;
+                        html += '<td>';
+                        html += `<button class="btn btn-sm btn-warning me-1" onclick="editClient(${client.id})">
+                                    <i class="bi bi-pencil"></i> 수정
+                                 </button>`;
+                        html += `<button class="btn btn-sm btn-danger me-1" onclick="deleteClient(${client.id})">
+                                    <i class="bi bi-trash"></i> 삭제
+                                 </button>`;
+                        html += `<button class="btn btn-sm btn-primary me-1" onclick="manageApiKeys(${client.id}, '${client.name}')">
+                                    <i class="bi bi-key-fill"></i> API Key
+                                 </button>`;
+                        html += `<a href="/backoffice/clients/${client.id}/token-quotas" class="btn btn-sm btn-info me-1">
+                                    <i class="bi bi-token"></i> Token Quota
+                                 </a>`;
+                        html += `<a href="/backoffice/clients/${client.id}/pricing-quotas" class="btn btn-sm btn-success">
+                                    <i class="bi bi-currency-dollar"></i> Pricing Quota
+                                 </a>`;
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    listElement.innerHTML = html;
+                } else {
+                    listElement.innerHTML = '<p class="text-muted text-center">Client 목록을 불러올 수 없습니다.</p>';
+                }
+            } else {
+                listElement.innerHTML = '<p class="text-danger text-center">Client 목록을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        let currentClientId = null;
+
+        // API Key 관리 모달 열기
+        async function manageApiKeys(clientId, clientName) {
+            currentClientId = clientId;
+            document.getElementById('modalClientName').textContent = clientName;
+            
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('apiKeyMappingModal'));
+            modal.show();
+            
+            // API Key 목록 로드
+            await loadAvailableApiKeys();
+            await loadLinkedApiKeys(clientId);
+        }
+
+        // 사용 가능한 API Key 목록 로드
+        async function loadAvailableApiKeys() {
+            const select = document.getElementById('apiKeySelect');
+            select.innerHTML = '<option value="">API Key 선택...</option>';
+
+            const response = await apiCall('/api/backoffice/api-keys');
+            if (response && response.ok) {
+                const result = await response.json();
+                if (result.code === 'SUCCESS' && result.data) {
+                    result.data.forEach(apiKey => {
+                        const option = document.createElement('option');
+                        option.value = apiKey.id;
+                        option.textContent = `${apiKey.vendor} - ${apiKey.description || apiKey.id}`;
+                        select.appendChild(option);
+                    });
+                }
+            }
+        }
+
+        // 연결된 API Key 목록 로드
+        async function loadLinkedApiKeys(clientId) {
+            const listElement = document.getElementById('linkedApiKeysList');
+            listElement.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+
+            const response = await apiCall(`/api/backoffice/clients/${clientId}/api-keys`);
+            if (response && response.ok) {
+                const result = await response.json();
+                if (result.code === 'SUCCESS' && result.data) {
+                    const apiKeys = result.data;
+                    
+                    if (apiKeys.length === 0) {
+                        listElement.innerHTML = '<p class="text-muted text-center">연결된 API Key가 없습니다.</p>';
+                        return;
+                    }
+
+                    let html = '<div class="table-responsive"><table class="table table-sm table-hover">';
+                    html += '<thead><tr>';
+                    html += '<th>Vendor</th><th>설명</th><th>API Key</th><th>작업</th>';
+                    html += '</tr></thead><tbody>';
+
+                    apiKeys.forEach(apiKey => {
+                        const apiKeyDisplay = apiKey.apiKey ? (apiKey.apiKey.substring(0, 20) + '...') : '-';
+                        html += '<tr>';
+                        html += `<td><span class="badge bg-primary">${apiKey.vendor}</span></td>`;
+                        html += `<td>${apiKey.description || '-'}</td>`;
+                        html += `<td><code>${apiKeyDisplay}</code></td>`;
+                        html += '<td>';
+                        html += `<button class="btn btn-sm btn-danger" onclick="unlinkApiKey(${apiKey.id})">
+                                    <i class="bi bi-x-circle"></i> 해제
+                                 </button>`;
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    listElement.innerHTML = html;
+                } else {
+                    listElement.innerHTML = '<p class="text-muted text-center">API Key 목록을 불러올 수 없습니다.</p>';
+                }
+            } else {
+                listElement.innerHTML = '<p class="text-danger text-center">API Key 목록을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        // API Key 연결
+        async function linkApiKey() {
+            const apiKeyId = document.getElementById('apiKeySelect').value;
+            if (!apiKeyId || !currentClientId) {
+                alert('API Key를 선택해주세요.');
+                return;
+            }
+
+            const response = await apiCall(`/api/backoffice/clients/${currentClientId}/api-keys/${apiKeyId}`, {
+                method: 'POST'
+            });
+
+            if (response && response.ok) {
+                alert('API Key가 연결되었습니다.');
+                document.getElementById('apiKeySelect').value = '';
+                await loadAvailableApiKeys();
+                await loadLinkedApiKeys(currentClientId);
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'API Key 연결에 실패했습니다.');
+            }
+        }
+
+        // API Key 연결 해제
+        async function unlinkApiKey(apiKeyId) {
+            if (!confirm('정말 이 API Key 연결을 해제하시겠습니까?')) {
+                return;
+            }
+
+            const response = await apiCall(`/api/backoffice/clients/${currentClientId}/api-keys/${apiKeyId}`, {
+                method: 'DELETE'
+            });
+
+            if (response && response.ok) {
+                alert('API Key 연결이 해제되었습니다.');
+                await loadAvailableApiKeys();
+                await loadLinkedApiKeys(currentClientId);
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'API Key 연결 해제에 실패했습니다.');
+            }
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!getToken()) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            const clientName = localStorage.getItem('clientName');
+            if (clientName) {
+                document.getElementById('clientName').textContent = clientName;
+            }
+
+            loadClients();
+        });
+    </script>
+</body>
+</html>

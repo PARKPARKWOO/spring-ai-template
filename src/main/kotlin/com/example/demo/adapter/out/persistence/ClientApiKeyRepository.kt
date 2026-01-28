@@ -23,5 +23,33 @@ interface ClientApiKeyRepository: JpaRepository<ClientApiKey, Long> {
         @Param("clientId") clientId: Long,
         @Param("vendor") vendor: Vendor
     ): ClientApiKey?
+    
+    /**
+     * Client ID로 연결된 ApiKey 목록 조회 (fetch join)
+     */
+    @Query("""
+        SELECT cak FROM ClientApiKey cak
+        JOIN FETCH cak.apiKey ak
+        JOIN FETCH cak.client c
+        WHERE cak.client.id = :clientId
+        AND cak.deletedAt IS NULL
+        AND ak.deletedAt IS NULL
+        ORDER BY cak.createdAt DESC
+    """)
+    fun findByClientIdWithApiKey(@Param("clientId") clientId: Long): List<ClientApiKey>
+    
+    /**
+     * ApiKey ID로 연결된 Client 목록 조회 (fetch join)
+     */
+    @Query("""
+        SELECT cak FROM ClientApiKey cak
+        JOIN FETCH cak.client c
+        JOIN FETCH cak.apiKey ak
+        WHERE cak.apiKey.id = :apiKeyId
+        AND cak.deletedAt IS NULL
+        AND c.deletedAt IS NULL
+        ORDER BY cak.createdAt DESC
+    """)
+    fun findByApiKeyIdWithClient(@Param("apiKeyId") apiKeyId: Long): List<ClientApiKey>
 }
 

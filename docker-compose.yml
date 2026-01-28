@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0
+    container_name: ai-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-my-secret-pw}
+      MYSQL_DATABASE: ai
+      MYSQL_USER: ${MYSQL_USER:-ai_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-network
+
+  # Spring Boot 애플리케이션
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-app
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    # 컨테이너 메모리 제한 설정 (예: 1GB)
+    # 실제 환경에 맞게 조정하세요
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY_LIMIT:-1G}
+        reservations:
+          memory: ${CONTAINER_MEMORY_RESERVATION:-512M}
+    environment:
+      # MySQL 연결 정보
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: ${MYSQL_USER:-ai_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_password}
+      
+      # AI API 키
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROK_API_KEY: ${GROK_API_KEY}
+      
+      # JWT 설정
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-use-a-long-random-string-at-least-32-characters}
+      
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      
+      # JVM 메모리 설정 (컨테이너 메모리의 비율, 선택사항)
+      # 기본값: Dockerfile에서 설정된 값 사용
+      JAVA_MAX_RAM_PERCENTAGE: ${JAVA_MAX_RAM_PERCENTAGE:-75.0}
+      JAVA_INITIAL_RAM_PERCENTAGE: ${JAVA_INITIAL_RAM_PERCENTAGE:-50.0}
+      JAVA_MIN_RAM_PERCENTAGE: ${JAVA_MIN_RAM_PERCENTAGE:-25.0}
+      
+      # 추가 JVM 옵션 (선택사항, 기본값 오버라이드)
+      JAVA_OPTS: ${JAVA_OPTS:--XX:+UseContainerSupport -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ExitOnOutOfMemoryError}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ai-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  ai-network:
+    driver: bridge

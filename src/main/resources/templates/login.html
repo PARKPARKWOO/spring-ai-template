@@ -116,7 +116,7 @@
             }
             
             try {
-                const response = await fetch('/api/client/login', {
+                const response = await fetch('/api/client/token/issue', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -130,8 +130,25 @@
                 }
                 
                 const result = await response.json();
-                // 로그인 성공 시 /ai 페이지로 이동
-                window.location.href = '/ai';
+                
+                // ApiResponse 구조: { code, message, data, error }
+                if (result.code === 'SUCCESS' && result.data) {
+                    // JWT 토큰 저장
+                    if (result.data.accessToken) {
+                        localStorage.setItem('accessToken', result.data.accessToken);
+                    }
+                    if (result.data.refreshToken) {
+                        localStorage.setItem('refreshToken', result.data.refreshToken);
+                    }
+                    if (result.data.clientName) {
+                        localStorage.setItem('clientName', result.data.clientName);
+                    }
+                    
+                    // 로그인 성공 시 백오피스 대시보드로 이동
+                    window.location.href = '/backoffice/dashboard';
+                } else {
+                    throw new Error(result.message || '로그인 실패');
+                }
             } catch (error) {
                 console.error('Login error:', error);
                 alert('로그인에 실패했습니다. 사용자명과 비밀번호를 확인해주세요.');

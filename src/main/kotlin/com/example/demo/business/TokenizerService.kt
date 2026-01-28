@@ -9,12 +9,7 @@ import org.springframework.stereotype.Service
 class TokenizerService(
     private val openAiApi: OpenAiApi,
 ) {
-    fun getTokenCount(prompt: Prompt): Int {
-        val systemMessage = prompt.systemMessage.text
-        val userMessage = prompt.userMessages.joinToString { userMessage ->
-            userMessage.text
-        }
-
-        return JTokkitTokenCountEstimator().estimate(systemMessage + userMessage)
+    fun getTokenCount(userPrompt: String, systemPrompt: String): Int {
+        return JTokkitTokenCountEstimator().estimate(userPrompt + systemPrompt)
     }
 }

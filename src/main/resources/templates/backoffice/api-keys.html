@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApiKey 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 1rem 1.5rem;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .sidebar .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .api-key-value {
+            font-family: 'Courier New', monospace;
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 sidebar">
+                <div class="p-3">
+                    <h4 class="mb-4">
+                        <i class="bi bi-shield-check"></i> 백오피스
+                    </h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/dashboard">
+                                <i class="bi bi-speedometer2"></i> 대시보드
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/clients">
+                                <i class="bi bi-people"></i> Client 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/app-keys">
+                                <i class="bi bi-key"></i> AppKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/backoffice/api-keys">
+                                <i class="bi bi-key-fill"></i> ApiKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/token-pricing-policies">
+                                <i class="bi bi-currency-dollar"></i> Token 가격 정책
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/ai">
+                                <i class="bi bi-robot"></i> AI 테스트
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/swagger-ui.html" target="_blank">
+                                <i class="bi bi-file-code"></i> API 문서
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4">
+                            <a class="nav-link" href="#" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 col-lg-10 main-content">
+                <!-- Navbar -->
+                <nav class="navbar navbar-expand-lg navbar-light mb-4">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">ApiKey 관리</span>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3" id="clientName">로딩 중...</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- ApiKey 생성 카드 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-plus-circle"></i> 새 ApiKey 생성
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-3" id="vendorTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="openai-tab" data-bs-toggle="tab" data-bs-target="#openai" type="button">
+                                    OpenAI
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="anthropic-tab" data-bs-toggle="tab" data-bs-target="#anthropic" type="button">
+                                    Anthropic
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="google-tab" data-bs-toggle="tab" data-bs-target="#google" type="button">
+                                    Google
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="xai-tab" data-bs-toggle="tab" data-bs-target="#xai" type="button">
+                                    xAI
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="vendorTabContent">
+                            <!-- OpenAI -->
+                            <div class="tab-pane fade show active" id="openai" role="tabpanel">
+                                <form id="createOpenAiForm">
+                                    <div class="mb-3">
+                                        <label for="openaiApiKey" class="form-label">API Key *</label>
+                                        <input type="text" class="form-control" id="openaiApiKey" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="openaiDescription" class="form-label">설명</label>
+                                        <input type="text" class="form-control" id="openaiDescription">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">생성</button>
+                                </form>
+                            </div>
+                            <!-- Anthropic -->
+                            <div class="tab-pane fade" id="anthropic" role="tabpanel">
+                                <form id="createAnthropicForm">
+                                    <div class="mb-3">
+                                        <label for="anthropicApiKey" class="form-label">API Key *</label>
+                                        <input type="text" class="form-control" id="anthropicApiKey" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="anthropicDescription" class="form-label">설명</label>
+                                        <input type="text" class="form-control" id="anthropicDescription">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">생성</button>
+                                </form>
+                            </div>
+                            <!-- Google -->
+                            <div class="tab-pane fade" id="google" role="tabpanel">
+                                <form id="createGoogleForm">
+                                    <div class="mb-3">
+                                        <label for="googleApiKey" class="form-label">API Key *</label>
+                                        <input type="text" class="form-control" id="googleApiKey" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="googleProjectId" class="form-label">Project ID</label>
+                                        <input type="text" class="form-control" id="googleProjectId">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="googleLocation" class="form-label">Location</label>
+                                        <input type="text" class="form-control" id="googleLocation">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="googleDescription" class="form-label">설명</label>
+                                        <input type="text" class="form-control" id="googleDescription">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">생성</button>
+                                </form>
+                            </div>
+                            <!-- xAI -->
+                            <div class="tab-pane fade" id="xai" role="tabpanel">
+                                <form id="createXAiForm">
+                                    <div class="mb-3">
+                                        <label for="xaiApiKey" class="form-label">API Key *</label>
+                                        <input type="text" class="form-control" id="xaiApiKey" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="xaiDescription" class="form-label">설명</label>
+                                        <input type="text" class="form-control" id="xaiDescription">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">생성</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ApiKey 목록 -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i> ApiKey 목록
+                        </h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadApiKeys()">
+                            <i class="bi bi-arrow-clockwise"></i> 새로고침
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="apiKeysList">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">로딩 중...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // JWT 토큰 가져오기
+        function getToken() {
+            return localStorage.getItem('accessToken');
+        }
+
+        // API 호출 헬퍼
+        async function apiCall(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/client/login';
+                return null;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            };
+
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...(options.headers || {})
+                }
+            };
+
+            try {
+                const response = await fetch(url, mergedOptions);
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    window.location.href = '/client/login';
+                    return null;
+                }
+                return response;
+            } catch (error) {
+                console.error('API call error:', error);
+                return null;
+            }
+        }
+
+        // 로그아웃
+        function logout() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('clientName');
+            window.location.href = '/client/login';
+        }
+
+        // OpenAI ApiKey 생성
+        document.getElementById('createOpenAiForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const apiKey = document.getElementById('openaiApiKey').value;
+            const description = document.getElementById('openaiDescription').value;
+            
+            const response = await apiCall('/api/backoffice/api-keys/openai', {
+                method: 'POST',
+                body: JSON.stringify({ apiKey, description })
+            });
+
+            if (response && response.ok) {
+                alert('OpenAI ApiKey가 생성되었습니다.');
+                document.getElementById('createOpenAiForm').reset();
+                loadApiKeys();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'ApiKey 생성에 실패했습니다.');
+            }
+        });
+
+        // Anthropic ApiKey 생성
+        document.getElementById('createAnthropicForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const apiKey = document.getElementById('anthropicApiKey').value;
+            const description = document.getElementById('anthropicDescription').value;
+            
+            const response = await apiCall('/api/backoffice/api-keys/anthropic', {
+                method: 'POST',
+                body: JSON.stringify({ apiKey, description })
+            });
+
+            if (response && response.ok) {
+                alert('Anthropic ApiKey가 생성되었습니다.');
+                document.getElementById('createAnthropicForm').reset();
+                loadApiKeys();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'ApiKey 생성에 실패했습니다.');
+            }
+        });
+
+        // Google ApiKey 생성
+        document.getElementById('createGoogleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const apiKey = document.getElementById('googleApiKey').value;
+            const projectId = document.getElementById('googleProjectId').value;
+            const location = document.getElementById('googleLocation').value;
+            const description = document.getElementById('googleDescription').value;
+            
+            const response = await apiCall('/api/backoffice/api-keys/google', {
+                method: 'POST',
+                body: JSON.stringify({ apiKey, projectId, location, description })
+            });
+
+            if (response && response.ok) {
+                alert('Google ApiKey가 생성되었습니다.');
+                document.getElementById('createGoogleForm').reset();
+                loadApiKeys();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'ApiKey 생성에 실패했습니다.');
+            }
+        });
+
+        // xAI ApiKey 생성
+        document.getElementById('createXAiForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const apiKey = document.getElementById('xaiApiKey').value;
+            const description = document.getElementById('xaiDescription').value;
+            
+            const response = await apiCall('/api/backoffice/api-keys/xai', {
+                method: 'POST',
+                body: JSON.stringify({ apiKey, description })
+            });
+
+            if (response && response.ok) {
+                alert('xAI ApiKey가 생성되었습니다.');
+                document.getElementById('createXAiForm').reset();
+                loadApiKeys();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'ApiKey 생성에 실패했습니다.');
+            }
+        });
+
+        // ApiKey 삭제
+        async function deleteApiKey(apiKeyId) {
+            if (!confirm('정말 이 ApiKey를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            const response = await apiCall(`/api/backoffice/api-keys/${apiKeyId}`, {
+                method: 'DELETE'
+            });
+
+            if (response && response.ok) {
+                alert('ApiKey가 삭제되었습니다.');
+                loadApiKeys();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || 'ApiKey 삭제에 실패했습니다.');
+            }
+        }
+
+        // ApiKey 목록 로드
+        async function loadApiKeys() {
+            const listElement = document.getElementById('apiKeysList');
+            listElement.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+
+            const response = await apiCall('/api/backoffice/api-keys');
+            
+            if (response && response.ok) {
+                const result = await response.json();
+                // ApiResponse 구조: { code, message, data, error }
+                if (result.code === 'SUCCESS' && result.data) {
+                    const apiKeys = result.data;
+                    
+                    if (apiKeys.length === 0) {
+                        listElement.innerHTML = '<p class="text-muted text-center">등록된 ApiKey가 없습니다.</p>';
+                        return;
+                    }
+
+                    let html = '<div class="table-responsive"><table class="table table-hover">';
+                    html += '<thead><tr>';
+                    html += '<th>ID</th><th>Vendor</th><th>설명</th><th>API Key</th><th>Project ID</th><th>Location</th><th>생성일</th><th>작업</th>';
+                    html += '</tr></thead><tbody>';
+
+                    apiKeys.forEach(key => {
+                        const createdAt = new Date(key.createdAt).toLocaleString('ko-KR');
+                        const apiKeyDisplay = key.apiKey ? (key.apiKey.substring(0, 20) + '...') : '-';
+
+                        html += '<tr>';
+                        html += `<td>${key.id}</td>`;
+                        html += `<td><span class="badge bg-primary">${key.vendor}</span></td>`;
+                        html += `<td>${key.description || '-'}</td>`;
+                        html += `<td><div class="api-key-value">${apiKeyDisplay}</div></td>`;
+                        html += `<td>${key.projectId || '-'}</td>`;
+                        html += `<td>${key.location || '-'}</td>`;
+                        html += `<td>${createdAt}</td>`;
+                        html += '<td>';
+                        html += `<button class="btn btn-sm btn-danger" onclick="deleteApiKey(${key.id})">
+                                    <i class="bi bi-trash"></i> 삭제
+                                 </button>`;
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    listElement.innerHTML = html;
+                } else {
+                    listElement.innerHTML = '<p class="text-muted text-center">ApiKey 목록을 불러올 수 없습니다.</p>';
+                }
+            } else {
+                listElement.innerHTML = '<p class="text-danger text-center">ApiKey 목록을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!getToken()) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            const clientName = localStorage.getItem('clientName');
+            if (clientName) {
+                document.getElementById('clientName').textContent = clientName;
+            }
+
+            loadApiKeys();
+        });
+    </script>
+</body>
+</html>

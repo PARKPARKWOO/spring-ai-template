@@ -1,0 +1,48 @@
+# Gradle
+.gradle/
+build/
+!build/libs/
+!build/libs/*.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# 문서
+*.md
+HELP.md
+
+# 테스트
+src/test/
+
+# 환경 변수 파일 (보안)
+.env
+.env.local
+*.env
+
+# 로그
+*.log
+logs/
+
+# 임시 파일
+*.tmp
+*.temp
+*.swp
+*.swo
+*~

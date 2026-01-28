@@ -11,20 +11,31 @@ class Client(
     val name: String,
     
     @Column(nullable = false)
-    val password: String,
+    var password: String,
     
     val description: String? = null,
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val role: ClientRole = ClientRole.CLIENT,
     
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
     
     @Column(name = "updated_at", nullable = false)
-    val updatedAt: LocalDateTime,
+    var updatedAt: LocalDateTime,
     
     @Column(name = "deleted_at")
     val deletedAt: LocalDateTime? = null,
 ) {
     @OneToMany(mappedBy = "client", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     val clientApiKeys: List<ClientApiKey> = emptyList()
+
+    fun updatePassword(password: String) {
+        this.password = password
+        this.updatedAt = LocalDateTime.now()
+    }
+    
+    fun isSuperAdmin(): Boolean = role == ClientRole.SUPER_ADMIN
 }
 
