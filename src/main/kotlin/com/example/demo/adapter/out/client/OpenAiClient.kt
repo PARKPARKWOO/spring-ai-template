@@ -12,6 +12,7 @@ import com.example.demo.model.api.OpenAiApiKey
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.Prompt
@@ -51,8 +52,7 @@ class OpenAiClient(
     }
 
     override fun generatePrompt(
-        userMessage: String,
-        systemPrompt: String,
+        messages: List<Message>,
         maxTokens: Int,
         jsonSchema: String?,
         urlContexts: List<String>?,
@@ -64,8 +64,6 @@ class OpenAiClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        val systemMessage = SystemMessage(systemPrompt)
-        val userMessage = UserMessage(userMessage)
         val optionsBuilder = OpenAiChatOptions.builder()
             .maxTokens(maxTokens)
 
@@ -78,6 +76,6 @@ class OpenAiClient(
             )
         }
 
-        return Prompt(listOf(userMessage, systemMessage), optionsBuilder.build())
+        return Prompt(messages, optionsBuilder.build())
     }
 }

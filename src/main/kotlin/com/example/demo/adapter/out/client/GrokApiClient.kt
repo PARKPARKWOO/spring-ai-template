@@ -12,6 +12,7 @@ import com.example.demo.model.api.XAiApiKey
 import org.springframework.ai.anthropic.AnthropicChatOptions
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.openai.OpenAiChatModel
@@ -60,8 +61,7 @@ class GrokApiClient(
     }
 
     override fun generatePrompt(
-        userMessage: String,
-        systemPrompt: String,
+        messages: List<Message>,
         maxTokens: Int,
         jsonSchema: String?,
         urlContexts: List<String>?,
@@ -73,8 +73,6 @@ class GrokApiClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        val systemMessage = SystemMessage(systemPrompt)
-        val userMessage = UserMessage(userMessage)
         val optionsBuilder = OpenAiChatOptions.builder()
             .maxTokens(maxTokens)
 
@@ -87,6 +85,6 @@ class GrokApiClient(
             )
         }
         
-        return Prompt(listOf(userMessage, systemMessage), optionsBuilder.build())
+        return Prompt(messages, optionsBuilder.build())
     }
 }

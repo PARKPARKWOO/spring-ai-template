@@ -3,15 +3,19 @@ package com.example.demo.dto
 import com.example.demo.model.Vendor
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.NotEmpty
 
 @Schema(description = "AI API 요청")
 data class AiApiRequest(
     @field:Schema(description = "사용할 모델 정의", required = true)
     val models: List<ModelSpec>,
-    @field:Schema(description = "사용자 프롬프트", example = "안녕하세요", required = true)
-    val userPrompt: String,
-    @field:Schema(description = "시스템 프롬프트 (선택사항)", example = "당신은 도움이 되는 AI 어시스턴트입니다.")
-    val systemPrompt: String? = null,
+    @field:Schema(description = "대화 내역 메시지 목록. userMessage, SystemMessage, AssistantMessage를 포함할 수 있습니다.", example = "[{\"role\":\"system\",\"content\":\"당신은 도움이 되는 AI 어시스턴트입니다.\"},{\"role\":\"user\",\"content\":\"안녕하세요\"}]")
+    @field:NotEmpty
+    val messages: List<ChatMessage> = emptyList(),
+//    @field:Schema(description = "사용자 프롬프트 (messages가 없을 때 사용)", example = "안녕하세요")
+//    val userPrompt: String? = null,
+//    @field:Schema(description = "시스템 프롬프트 (선택사항, messages가 없을 때 사용)", example = "당신은 도움이 되는 AI 어시스턴트입니다.")
+//    val systemPrompt: String? = null,
     @field:Schema(description = "실제 사용하는 사용자의 Id 혹은 테넌트 Id", example = "1", required = true, defaultValue = "1")
     val sessionId: String,
     @field:Schema(description = "Structured Output을 위한 JSON Schema (선택사항). JSON 객체 또는 JSON 문자열로 제공 가능합니다.", example = "{\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\"}},\"required\":[\"answer\"]}")

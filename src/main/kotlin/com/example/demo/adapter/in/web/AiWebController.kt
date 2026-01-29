@@ -25,7 +25,7 @@ class AiWebController {
         }
         
         model.addAttribute("vendors", Vendor.entries)
-        model.addAttribute("request", AiApiRequest(models = emptyList(), userPrompt = "", sessionId = "1"))
+        model.addAttribute("request", AiApiRequest(models = emptyList(), sessionId = "1"))
         model.addAttribute("clientName", session.getAttribute("clientName"))
         return "ai-form"
     }

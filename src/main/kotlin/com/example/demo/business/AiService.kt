@@ -44,6 +44,13 @@ class AiService(
         aiApiRequest: AiApiRequest,
         clientId: Long,
     ): List<AiApiResponse> = coroutineScope {
+        if (aiApiRequest.messages.isEmpty()) {
+            throw AiServiceException(
+                ApiErrorCode.AI_SYSTEM_PROMPT_REQUIRED,
+                "요청에는 messages가 필수입니다."
+            )
+        }
+
         aiApiRequest.models.map { modelSpec ->
             async(Dispatchers.IO) {
                 val start = Instant.now()
@@ -58,30 +65,23 @@ class AiService(
 
                 // timeout 설정 (기본값: 120초)
                 val timeoutMs = (aiApiRequest.timeoutSeconds ?: 120) * 1000L
-                
+
                 val response = try {
                     withTimeout(timeoutMs) {
-                        aiApiRequest.systemPrompt?.let {
-                            client.call(
-                                aiApiRequest.userPrompt,
-                                aiApiRequest.systemPrompt,
-                                clientId,
-                                aiApiRequest.sessionId,
-                                options.jsonSchema,
-                                options.urlContexts,
-                                options.enableGoogleSearch,
-                                options.toolNames,
-                                modelSpec.version,
-                                options.useCachedContent,
-                                options.cachedContentName,
-                                options.cacheStrategy,
-                                options.cacheTtl
-                            )
-                        } ?: client.call(
-                            aiApiRequest.userPrompt,
+                        // messages가 있으면 messages를 사용, 없으면 기존 userPrompt/systemPrompt 사용
+                        client.call(
+                            aiApiRequest.messages,
                             clientId,
                             aiApiRequest.sessionId,
-                            modelSpec.version
+                            options.jsonSchema,
+                            options.urlContexts,
+                            options.enableGoogleSearch,
+                            options.toolNames,
+                            modelSpec.version,
+                            options.useCachedContent,
+                            options.cachedContentName,
+                            options.cacheStrategy,
+                            options.cacheTtl
                         )
                     }
                 } catch (e: TimeoutCancellationException) {
@@ -119,12 +119,14 @@ class AiService(
                 useCachedContent = vendorOptions.useCachedContent,
                 cachedContentName = vendorOptions.cachedContentName
             )
+
             is VendorOptions.OpenAIOptions -> VendorSpecificOptions(
                 jsonSchema = commonResponseSchema,
                 urlContexts = null,
                 enableGoogleSearch = null,
                 toolNames = vendorOptions.toolNames
             )
+
             is VendorOptions.AnthropicOptions -> VendorSpecificOptions(
                 jsonSchema = null, // Anthropic은 Structured Output 미지원
                 urlContexts = null,
@@ -133,12 +135,14 @@ class AiService(
                 cacheStrategy = vendorOptions.cacheStrategy,
                 cacheTtl = vendorOptions.cacheTtl
             )
+
             is VendorOptions.GrokOptions -> VendorSpecificOptions(
                 jsonSchema = commonResponseSchema,
                 urlContexts = null,
                 enableGoogleSearch = null,
                 toolNames = vendorOptions.toolNames
             )
+
             null -> VendorSpecificOptions(
                 jsonSchema = commonResponseSchema,
                 urlContexts = null,
@@ -166,10 +170,11 @@ class AiService(
             )
         }
 
-        if (aiApiRequest.systemPrompt == null) {
+        // messages가 있으면 messages를 사용, 없으면 systemPrompt 필수 확인
+        if (aiApiRequest.messages.isEmpty()) {
             throw AiServiceException(
                 ApiErrorCode.AI_SYSTEM_PROMPT_REQUIRED,
-                "스트리밍 요청에는 systemPrompt가 필수입니다."
+                "스트리밍 요청에는 messages가 필수입니다."
             )
         }
 
@@ -185,12 +190,11 @@ class AiService(
 
             // timeout 설정 (기본값: 120초)
             val timeoutMs = (aiApiRequest.timeoutSeconds ?: 120) * 1000L
-            
+
             // 각 모델의 스트림에 벤더 정보를 포함하여 구분 가능하도록 함
             // 스트리밍의 경우 timeout은 Flux의 timeout 연산자로 처리
             client.stream(
-                aiApiRequest.userPrompt,
-                aiApiRequest.systemPrompt!!,
+                aiApiRequest.messages,
                 clientId,
                 aiApiRequest.sessionId,
                 options.jsonSchema,
@@ -202,14 +206,16 @@ class AiService(
                 options.cachedContentName,
                 options.cacheStrategy,
                 options.cacheTtl
-            )
-                .timeout(java.time.Duration.ofMillis(timeoutMs))
+            ).timeout(java.time.Duration.ofMillis(timeoutMs))
                 .map { chunk -> "[${modelSpec.vendor}:${modelSpec.version}] $chunk" } // 벤더와 모델 정보 추가
                 .doOnComplete {
                     logger().info("Stream completed for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, clientId: $clientId")
                 }
                 .doOnError { error ->
-                    logger().error("Stream error for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, clientId: $clientId", error)
+                    logger().error(
+                        "Stream error for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, clientId: $clientId",
+                        error
+                    )
                 }
         }
 

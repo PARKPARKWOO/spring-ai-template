@@ -25,6 +25,8 @@ import org.springframework.ai.vertexai.gemini.api.VertexAiGeminiApi
 import org.springframework.util.MimeTypeUtils
 import org.springframework.stereotype.Component
 import com.example.demo.common.logger
+import org.springframework.ai.chat.messages.AssistantMessage
+import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.content.Media
 import java.net.URI
 
@@ -63,8 +65,7 @@ class GeminiClient(
     }
 
     override fun generatePrompt(
-        userMessage: String,
-        systemPrompt: String,
+        messages: List<Message>,
         maxTokens: Int,
         jsonSchema: String?,
         urlContexts: List<String>?,
@@ -76,35 +77,34 @@ class GeminiClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        val systemMessage = SystemMessage(systemPrompt)
-        
-        // URL Context가 제공되면 Media로 추가
-        // Gemini는 URL을 직접 처리할 수 있으며, URI를 Media의 data로 전달하면 됩니다.
-        // MIME 타입은 Gemini가 자동으로 감지하거나, 명시적으로 지정할 수 있습니다.
-        val mediaList = urlContexts?.mapNotNull { url ->
-            try {
-                // URL을 Media로 변환
-                // Gemini는 URL의 콘텐츠 타입을 자동으로 감지하므로 MIME 타입을 명시하지 않아도 됩니다.
-                // 다만, 명시적으로 지정하려면 URL의 실제 콘텐츠 타입을 확인해야 합니다.
-                // 여기서는 기본적으로 text/html로 설정하되, 실제로는 Gemini가 자동 감지합니다.
-                Media.builder()
-                    .mimeType(MimeTypeUtils.TEXT_HTML) // URL 컨텍스트는 기본적으로 HTML로 처리
-                    .data(URI.create(url))
-                    .build()
-            } catch (e: Exception) {
-                logger().warn("Invalid URL in urlContexts: $url", e)
-                null
+        // URL Context가 제공되면 마지막 UserMessage에 Media로 추가
+        val processedMessages = if (!urlContexts.isNullOrEmpty()) {
+            val mediaList = urlContexts.mapNotNull { url ->
+                try {
+                    Media.builder()
+                        .mimeType(MimeTypeUtils.TEXT_HTML)
+                        .data(URI.create(url))
+                        .build()
+                } catch (e: Exception) {
+                    logger().warn("Invalid URL in urlContexts: $url", e)
+                    null
+                }
             }
-        } ?: emptyList()
-        
-        // UserMessage 생성 (URL Context가 있으면 Media 포함)
-        val userMessageObj = if (mediaList.isNotEmpty()) {
-            UserMessage.builder()
-                .text(userMessage)
-                .media(mediaList)
-                .build()
+            
+            // 마지막 UserMessage를 찾아서 Media 추가
+            val updatedMessages = messages.toMutableList()
+            val lastUserMessageIndex = updatedMessages.indexOfLast { it is UserMessage }
+            if (lastUserMessageIndex >= 0 && mediaList.isNotEmpty()) {
+                val lastUserMessage = updatedMessages[lastUserMessageIndex] as UserMessage
+                val userMessageWithMedia = UserMessage.builder()
+                    .text(lastUserMessage.text)
+                    .media(mediaList)
+                    .build()
+                updatedMessages[lastUserMessageIndex] = userMessageWithMedia
+            }
+            updatedMessages
         } else {
-            UserMessage(userMessage)
+            messages
         }
         
         val optionsBuilder = GoogleGenAiChatOptions.builder()
@@ -119,8 +119,6 @@ class GeminiClient(
         }
         
         // Google Search Grounding 활성화
-        // Context7 문서 확인 결과: googleSearchRetrieval(true) 메서드가 올바른 방식입니다.
-        // 이 기능은 Gemini가 Google Search를 사용하여 최신 정보를 검색하도록 합니다.
         if (enableGoogleSearch == true) {
             optionsBuilder.googleSearchRetrieval(true)
         }
@@ -128,8 +126,6 @@ class GeminiClient(
         // Tool Calling 설정
         if (!toolNames.isNullOrEmpty()) {
             optionsBuilder.toolNames(toolNames.toSet())
-            // toolCallbacks는 별도로 등록해야 할 수 있음
-            // 필요시 ToolCallbackRegistry를 통해 등록
         }
         
         // 캐시된 콘텐츠 사용 설정 (Gemini 전용)
@@ -139,7 +135,7 @@ class GeminiClient(
                 optionsBuilder.cachedContentName(it)
             }
         }
-        
-        return Prompt(listOf(userMessageObj, systemMessage), optionsBuilder.build())
+
+        return Prompt(processedMessages, optionsBuilder.build())
     }
 }

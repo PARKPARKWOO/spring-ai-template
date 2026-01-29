@@ -18,6 +18,7 @@ import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.anthropic.api.AnthropicCacheTtl
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
+import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.Prompt
@@ -51,8 +52,7 @@ class AnthropicClient(
     }
 
     override fun generatePrompt(
-        userMessage: String,
-        systemPrompt: String,
+        messages: List<Message>,
         maxTokens: Int,
         jsonSchema: String?,
         urlContexts: List<String>?,
@@ -64,20 +64,15 @@ class AnthropicClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        val systemMessage = SystemMessage(systemPrompt)
-        val userMessage = UserMessage(userMessage)
         val optionsBuilder = AnthropicChatOptions.builder()
             .maxTokens(maxTokens)
 
         model?.let { optionsBuilder.model(model) }
-        // Anthropic은 Structured Output을 지원하지 않으므로 jsonSchema는 무시
-        // 필요시 Anthropic의 특정 기능으로 대체 가능
         
         // Anthropic 캐시 옵션 설정
         if (cacheStrategy != null || cacheTtl != null) {
             val cacheOptionsBuilder = AnthropicCacheOptions.builder()
             
-            // 캐시 전략 설정
             cacheStrategy?.let { strategyStr ->
                 try {
                     val strategy = AnthropicCacheStrategy.valueOf(strategyStr)
@@ -87,15 +82,9 @@ class AnthropicClient(
                 }
             }
             
-            // 캐시 TTL 설정
-            // Note: messageTypeTtl은 MessageType enum을 필요로 합니다.
-            // Spring AI의 Anthropic API에서 정확한 패키지를 확인해야 합니다.
-            // 일단 TTL만 설정하는 방식으로 변경 (전략이 설정되면 자동으로 적용됨)
             cacheTtl?.let { ttlStr ->
                 try {
                     val ttl = AnthropicCacheTtl.valueOf(ttlStr)
-                    // messageTypeTtl은 나중에 정확한 MessageType import 경로 확인 후 추가
-                    // cacheOptionsBuilder.messageTypeTtl(MessageType.SYSTEM, ttl)
                     logger().info("Cache TTL requested: $ttlStr, but messageTypeTtl requires MessageType enum")
                 } catch (e: IllegalArgumentException) {
                     logger().warn("Invalid cache TTL: $ttlStr. Valid values: ${AnthropicCacheTtl.values().joinToString { it.name }}")
@@ -105,6 +94,6 @@ class AnthropicClient(
             optionsBuilder.cacheOptions(cacheOptionsBuilder.build())
         }
         
-        return Prompt(listOf(userMessage, systemMessage), optionsBuilder.build())
+        return Prompt(messages, optionsBuilder.build())
     }
 }
