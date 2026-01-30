@@ -85,9 +85,16 @@ class AiService(
                         )
                     }
                 } catch (e: TimeoutCancellationException) {
+                    logger().warn("AI API call timeout: vendor={}, clientId={}, timeout={}ms", modelSpec.vendor, clientId, timeoutMs, e)
                     AiApiResponse.failure(ApiErrorCode.AI_MODEL_TIMEOUT.name, modelSpec.vendor)
                 } catch (e: AiServiceException) {
+                    logger().error("AI API call failed: vendor={}, clientId={}, errorCode={}, message={}", 
+                        modelSpec.vendor, clientId, e.errorCode.name, e.message, e)
                     AiApiResponse.failure(e.errorCode.name, modelSpec.vendor)
+                } catch (e: Exception) {
+                    logger().error("Unexpected error during AI API call: vendor={}, clientId={}", 
+                        modelSpec.vendor, clientId, e)
+                    AiApiResponse.failure(ApiErrorCode.COMMON_INTERNAL_SERVER_ERROR.name, modelSpec.vendor)
                 }
 
                 val end = Instant.now()

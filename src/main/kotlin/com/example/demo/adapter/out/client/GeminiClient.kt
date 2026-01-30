@@ -27,8 +27,13 @@ import org.springframework.stereotype.Component
 import com.example.demo.common.logger
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
-import org.springframework.ai.content.Media
 import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Component
 class GeminiClient(
@@ -77,38 +82,47 @@ class GeminiClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        // URL Context가 제공되면 마지막 UserMessage에 Media로 추가
+        val optionsBuilder = GoogleGenAiChatOptions.builder()
+            .maxOutputTokens(maxTokens)
+        
+        // URL Context 처리: URL을 직접 호출해서 내용을 가져와 메시지에 포함
         val processedMessages = if (!urlContexts.isNullOrEmpty()) {
-            val mediaList = urlContexts.mapNotNull { url ->
+            // URL 내용을 비동기로 가져오기 (suspend 함수이므로 실제로는 동기적으로 처리)
+            val urlContents = urlContexts.mapNotNull { url ->
                 try {
-                    Media.builder()
-                        .mimeType(MimeTypeUtils.TEXT_HTML)
-                        .data(URI.create(url))
-                        .build()
+                    fetchUrlContent(url)
                 } catch (e: Exception) {
-                    logger().warn("Invalid URL in urlContexts: $url", e)
+                    logger().warn("Failed to fetch URL content: $url", e)
                     null
                 }
             }
             
-            // 마지막 UserMessage를 찾아서 Media 추가
+            // 마지막 UserMessage를 찾아서 URL 내용 추가
             val updatedMessages = messages.toMutableList()
             val lastUserMessageIndex = updatedMessages.indexOfLast { it is UserMessage }
-            if (lastUserMessageIndex >= 0 && mediaList.isNotEmpty()) {
+            if (lastUserMessageIndex >= 0 && urlContents.isNotEmpty()) {
                 val lastUserMessage = updatedMessages[lastUserMessageIndex] as UserMessage
-                val userMessageWithMedia = UserMessage.builder()
-                    .text(lastUserMessage.text)
-                    .media(mediaList)
+                
+                // URL 내용을 메시지 텍스트에 추가
+                val urlContentText = urlContents.joinToString("\n\n---\n\n") { (url, content) ->
+                    "URL: $url\n\nContent:\n$content"
+                }
+                val updatedText = if (lastUserMessage.text.isNotBlank()) {
+                    "${lastUserMessage.text}\n\n--- URL Contexts ---\n\n$urlContentText"
+                } else {
+                    "--- URL Contexts ---\n\n$urlContentText"
+                }
+                
+                val userMessageWithUrlContent = UserMessage.builder()
+                    .text(updatedText)
                     .build()
-                updatedMessages[lastUserMessageIndex] = userMessageWithMedia
+                updatedMessages[lastUserMessageIndex] = userMessageWithUrlContent
             }
             updatedMessages
         } else {
             messages
         }
-        
-        val optionsBuilder = GoogleGenAiChatOptions.builder()
-            .maxOutputTokens(maxTokens)
+
 
         model?.let { optionsBuilder.model(model) }
 
@@ -137,5 +151,55 @@ class GeminiClient(
         }
 
         return Prompt(processedMessages, optionsBuilder.build())
+    }
+    
+    /**
+     * URL을 직접 호출해서 내용을 가져옵니다.
+     * @param url 가져올 URL
+     * @return Pair<URL, Content> URL과 내용의 쌍
+     */
+    private fun fetchUrlContent(url: String): Pair<String, String> {
+        val httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build()
+        
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .timeout(Duration.ofSeconds(10))
+            .header("User-Agent", "Mozilla/5.0 (compatible; AI-Bot/1.0)")
+            .GET()
+            .build()
+        
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        
+        if (response.statusCode() != 200) {
+            throw RuntimeException("Failed to fetch URL: $url, status: ${response.statusCode()}")
+        }
+        
+        val content = response.body()
+        
+        // HTML인 경우 간단한 텍스트 추출 (태그 제거)
+        val textContent = if (content.contains("<html", ignoreCase = true) || 
+                             content.contains("<!DOCTYPE", ignoreCase = true)) {
+            // 간단한 HTML 태그 제거
+            content
+                .replace(Regex("<script[^>]*>.*?</script>", RegexOption.DOT_MATCHES_ALL), "")
+                .replace(Regex("<style[^>]*>.*?</style>", RegexOption.DOT_MATCHES_ALL), "")
+                .replace(Regex("<[^>]+>"), "")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+        } else {
+            content
+        }
+        
+        // 내용이 너무 길면 잘라내기 (예: 50000자 제한)
+        val maxLength = 50000
+        val finalContent = if (textContent.length > maxLength) {
+            textContent.take(maxLength) + "\n\n[Content truncated due to length]"
+        } else {
+            textContent
+        }
+        
+        return Pair(url, finalContent)
     }
 }
