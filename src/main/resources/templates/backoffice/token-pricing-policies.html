@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token 가격 정책 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 1rem 1.5rem;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .sidebar .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+        }
+        .main-content {
+            padding: 2rem;
+        }
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 sidebar">
+                <div class="p-3">
+                    <h4 class="mb-4">
+                        <i class="bi bi-shield-check"></i> 백오피스
+                    </h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/dashboard">
+                                <i class="bi bi-speedometer2"></i> 대시보드
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/clients">
+                                <i class="bi bi-people"></i> Client 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/app-keys">
+                                <i class="bi bi-key"></i> AppKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/backoffice/api-keys">
+                                <i class="bi bi-key-fill"></i> ApiKey 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/backoffice/token-pricing-policies">
+                                <i class="bi bi-currency-dollar"></i> Token 가격 정책
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/ai">
+                                <i class="bi bi-robot"></i> AI 테스트
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/swagger-ui.html" target="_blank">
+                                <i class="bi bi-file-code"></i> API 문서
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4">
+                            <a class="nav-link" href="#" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 col-lg-10 main-content">
+                <!-- Navbar -->
+                <nav class="navbar navbar-expand-lg navbar-light mb-4">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">Token 가격 정책 관리</span>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3" id="clientName">로딩 중...</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="logout()">
+                                <i class="bi bi-box-arrow-right"></i> 로그아웃
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- 정책 생성 카드 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-plus-circle"></i> 새 Token 가격 정책 생성
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="createPolicyForm">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label for="policyVendor" class="form-label">Vendor *</label>
+                                    <select class="form-select" id="policyVendor" required>
+                                        <option value="">선택하세요</option>
+                                        <option value="OPENAI">OpenAI</option>
+                                        <option value="ANTHROPIC">Anthropic</option>
+                                        <option value="GOOGLE">Google</option>
+                                        <option value="X_AI">xAI</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="policyModel" class="form-label">Model *</label>
+                                    <input type="text" class="form-control" id="policyModel" required
+                                           placeholder="예: gpt-4o-mini">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="policyInputPrice" class="form-label">Input 가격 (1M 토큰당 원화) *</label>
+                                    <input type="number" step="0.01" class="form-control" id="policyInputPrice" required
+                                           placeholder="예: 199.95">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="policyOutputPrice" class="form-label">Output 가격 (1M 토큰당 원화) *</label>
+                                    <input type="number" step="0.01" class="form-control" id="policyOutputPrice" required
+                                           placeholder="예: 799.80">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> 정책 생성
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 정책 목록 -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul"></i> Token 가격 정책 목록
+                        </h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadPolicies()">
+                            <i class="bi bi-arrow-clockwise"></i> 새로고침
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="policiesList">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">로딩 중...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // JWT 토큰 가져오기
+        function getToken() {
+            return localStorage.getItem('accessToken');
+        }
+
+        // API 호출 헬퍼
+        async function apiCall(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/client/login';
+                return null;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            };
+
+            const mergedOptions = {
+                ...defaultOptions,
+                ...options,
+                headers: {
+                    ...defaultOptions.headers,
+                    ...(options.headers || {})
+                }
+            };
+
+            try {
+                const response = await fetch(url, mergedOptions);
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    window.location.href = '/client/login';
+                    return null;
+                }
+                return response;
+            } catch (error) {
+                console.error('API call error:', error);
+                return null;
+            }
+        }
+
+        // 로그아웃
+        function logout() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('clientName');
+            window.location.href = '/client/login';
+        }
+
+        // 정책 생성
+        document.getElementById('createPolicyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const vendor = document.getElementById('policyVendor').value;
+            const model = document.getElementById('policyModel').value;
+            const inputPrice = parseFloat(document.getElementById('policyInputPrice').value);
+            const outputPrice = parseFloat(document.getElementById('policyOutputPrice').value);
+
+            const response = await apiCall('/api/backoffice/token-pricing-policies', {
+                method: 'POST',
+                body: JSON.stringify({
+                    vendor: vendor,
+                    model: model,
+                    inputTokenPricePerMillion: inputPrice,
+                    outputTokenPricePerMillion: outputPrice
+                })
+            });
+
+            if (response && response.ok) {
+                alert('Token 가격 정책이 생성되었습니다.');
+                document.getElementById('createPolicyForm').reset();
+                loadPolicies();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || '정책 생성에 실패했습니다.');
+            }
+        });
+
+        // 정책 삭제
+        async function deletePolicy(policyId) {
+            if (!confirm('정말 이 정책을 삭제하시겠습니까?')) {
+                return;
+            }
+
+            const response = await apiCall(`/api/backoffice/token-pricing-policies/${policyId}`, {
+                method: 'DELETE'
+            });
+
+            if (response && response.ok) {
+                alert('정책이 삭제되었습니다.');
+                loadPolicies();
+            } else {
+                const error = await response?.json();
+                alert(error?.message || '정책 삭제에 실패했습니다.');
+            }
+        }
+
+        // 정책 목록 로드
+        async function loadPolicies() {
+            const listElement = document.getElementById('policiesList');
+            listElement.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">로딩 중...</span></div></div>';
+
+            const response = await apiCall('/api/backoffice/token-pricing-policies');
+            
+            if (response && response.ok) {
+                const result = await response.json();
+                // ApiResponse 구조: { code, message, data, error }
+                if (result.code === 'SUCCESS' && result.data) {
+                    const policies = result.data;
+                    
+                    if (policies.length === 0) {
+                        listElement.innerHTML = '<p class="text-muted text-center">등록된 정책이 없습니다.</p>';
+                        return;
+                    }
+
+                    let html = '<div class="table-responsive"><table class="table table-hover">';
+                    html += '<thead><tr>';
+                    html += '<th>ID</th><th>Vendor</th><th>Model</th><th>Input 가격 (1M)</th><th>Output 가격 (1M)</th><th>활성</th><th>생성일</th><th>작업</th>';
+                    html += '</tr></thead><tbody>';
+
+                    policies.forEach(policy => {
+                        const createdAt = new Date(policy.createdAt).toLocaleString('ko-KR');
+                        const activeBadge = policy.isActive 
+                            ? '<span class="badge bg-success">활성</span>'
+                            : '<span class="badge bg-secondary">비활성</span>';
+
+                        html += '<tr>';
+                        html += `<td>${policy.id}</td>`;
+                        html += `<td><span class="badge bg-primary">${policy.vendor}</span></td>`;
+                        html += `<td>${policy.model}</td>`;
+                        html += `<td>${policy.inputTokenPricePerMillion.toLocaleString('ko-KR')}원</td>`;
+                        html += `<td>${policy.outputTokenPricePerMillion.toLocaleString('ko-KR')}원</td>`;
+                        html += `<td>${activeBadge}</td>`;
+                        html += `<td>${createdAt}</td>`;
+                        html += '<td>';
+                        html += `<button class="btn btn-sm btn-danger" onclick="deletePolicy(${policy.id})">
+                                    <i class="bi bi-trash"></i> 삭제
+                                 </button>`;
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    listElement.innerHTML = html;
+                } else {
+                    listElement.innerHTML = '<p class="text-muted text-center">정책 목록을 불러올 수 없습니다.</p>';
+                }
+            } else {
+                listElement.innerHTML = '<p class="text-danger text-center">정책 목록을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!getToken()) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            const clientName = localStorage.getItem('clientName');
+            if (clientName) {
+                document.getElementById('clientName').textContent = clientName;
+            }
+
+            loadPolicies();
+        });
+    </script>
+</body>
+</html>

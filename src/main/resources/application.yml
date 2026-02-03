@@ -1,4 +1,90 @@
 spring:
-  ai:
-    openai:
-      api-key: ass
+  application:
+    name: ${spring.profiles.active:dev}-spring-ai
+  profiles:
+    active: dev
+  lifecycle:
+    timeout-per-shutdown-phase: 60s  # 종료 단계별 타임아웃 (기본값: 30초)
+  mvc:
+    async:
+      request-timeout: 120000  # 60초 (밀리초 단위)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/ai
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway 사용 시 validate로 변경
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    user: ${FLYWAY_USER}
+    password: ${FLYWAY_PASSWORD}
+    baseline-on-migrate: true  # 기존 DB에 Flyway 적용 시 사용
+    locations: classpath:db/migration
+    baseline-version: 0  # 초기 baseline 버전
+    validate-on-migrate: true
+    repair-on-migrate: true  # 마이그레이션 실행 전 체크섬 불일치 자동 수정
+    clean-disabled: true  # 프로덕션에서 실수로 clean 방지
+
+
+# SpringDoc OpenAPI (Swagger) 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  show-actuator: false
+
+# 캐시 설정 (Caffeine)
+cache:
+  max-size: 10000  # 최대 캐시 항목 수
+  default-ttl-minutes: 5  # 기본 TTL (분)
+
+# gRPC 서버 설정 (net.devh)
+grpc:
+  server:
+    port: ${GRPC_PORT:9090}
+
+server:
+  servlet:
+    session:
+      timeout: 5m
+  tomcat:
+    connection-timeout:
+    max-keep-alive-requests: 200
+  shutdown: graceful  # Graceful shutdown 활성화
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: false
+    hostname: spring-ai
+
+# APM (Pyroscope) - org.woo.apm 사용 시 pyroscope.server.address 필요
+pyroscope:
+  server:
+    address: ${PYROSCOPE_SERVER_ADDRESS:http://localhost:4040}
+
+# Actuator / Prometheus (배포 환경에서 스크래핑용)
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
