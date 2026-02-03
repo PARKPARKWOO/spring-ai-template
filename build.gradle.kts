@@ -1,3 +1,5 @@
+import com.google.protobuf.gradle.*
+
 plugins {
 //    kotlin("jvm") version "1.9.25"
     kotlin("jvm") version "2.2.21"
@@ -6,6 +8,7 @@ plugins {
     kotlin("kapt") version "1.9.25"
     id("org.springframework.boot") version "3.5.8"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.google.protobuf") version "0.9.4"
     kotlin("plugin.jpa") version "1.9.25"
     id("org.woo.plugin.version-check") version "0.0.8"
 }
@@ -21,6 +24,7 @@ java {
 }
 
 val grpcVersion = "1.63.0"
+val protobufVersion = "3.25.3"
 
 repositories {
     mavenCentral()
@@ -82,16 +86,41 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.5")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.5")
 
-    // gRPC (common 모듈 ai.proto 포함)
-    implementation("org.woo:grpc:0.7.2")
+    // gRPC (ai.proto는 spring-ai에서 로컬 생성, org.woo:grpc 제거하여 중복 방지)
     implementation("org.woo:http:0.2.1")
     implementation("org.woo:apm:0.2.7")
+    implementation("org.woo:grpc:0.7.4")
+    implementation("io.grpc:grpc-protobuf:$grpcVersion")
+    implementation("io.grpc:grpc-stub:$grpcVersion")
+    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
     implementation("io.grpc:grpc-netty-shaded:$grpcVersion")
     implementation("net.devh:grpc-server-spring-boot-starter:3.1.0.RELEASE") {
         exclude(group = "io.grpc", module = "grpc-netty-shaded")
         exclude(group = "io.grpc", module = "grpc-protobuf")
     }
-    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
+    compileOnly("javax.annotation:javax.annotation-api:1.3.1")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
+    }
+    plugins {
+        id("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+        }
+        id("grpckt") {
+            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.2.0:jdk7@jar"
+        }
+    }
+    generateProtoTasks {
+        ofSourceSet("main").forEach {
+            it.plugins {
+                id("grpc") { }
+                id("grpckt") { }
+            }
+        }
+    }
 }
 
 dependencyManagement {

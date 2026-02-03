@@ -38,7 +38,7 @@ class AiApiGrpcService(
                     messages = request.messagesList.map { protoToChatMessage(it) },
                     sessionId = request.sessionId.ifBlank { "grpc" },
                     responseSchema = request.responseSchema.takeIf { it.isNotBlank() },
-                    timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds.value else null,
+                    timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
                 )
                 aiService.call(dto, applicationId)
             }
@@ -137,10 +137,10 @@ class AiApiGrpcService(
 
     private fun protoToChatMessage(p: AiProto.ChatMessage): ChatMessage =
         when (p.role.lowercase()) {
-            "user" -> com.example.demo.dto.UserChatMessage(p.content)
-            "system" -> com.example.demo.dto.SystemChatMessage(p.content)
-            "assistant" -> com.example.demo.dto.AssistantChatMessage(p.content)
-            else -> com.example.demo.dto.UserChatMessage(p.content)
+            "user" -> com.example.demo.dto.UserChatMessage(content = p.content)
+            "system" -> com.example.demo.dto.SystemChatMessage(content = p.content)
+            "assistant" -> com.example.demo.dto.AssistantChatMessage(content = p.content)
+            else -> com.example.demo.dto.UserChatMessage(content = p.content)
         }
 
     private fun protoToEmbeddingModelSpec(p: AiProto.EmbeddingModelSpec): EmbeddingModelSpec {
@@ -154,18 +154,18 @@ class AiApiGrpcService(
         val opts = p.vendorOptions
         val vendorOptions = if (opts == null) null else when (vendor) {
             Vendor.OPENAI -> com.example.demo.dto.EmbeddingVendorOptions.OpenAIOptions(
-                dimensions = if (opts.hasDimensions()) opts.dimensions.value else null,
+                dimensions = if (opts.hasDimensions()) opts.dimensions else null,
                 encodingFormat = opts.encodingFormat.takeIf { it.isNotBlank() },
                 user = opts.user.takeIf { it.isNotBlank() },
             )
             Vendor.GOOGLE -> com.example.demo.dto.EmbeddingVendorOptions.GeminiOptions(
                 taskType = opts.taskType.takeIf { it.isNotBlank() },
-                dimensions = if (opts.hasDimensions()) opts.dimensions.value else null,
+                dimensions = if (opts.hasDimensions()) opts.dimensions else null,
                 title = opts.title.takeIf { it.isNotBlank() },
                 autoTruncate = if (opts.hasAutoTruncate()) opts.autoTruncate else null,
             )
             Vendor.X_AI -> com.example.demo.dto.EmbeddingVendorOptions.GrokOptions(
-                dimensions = if (opts.hasDimensions()) opts.dimensions.value else null,
+                dimensions = if (opts.hasDimensions()) opts.dimensions else null,
                 encodingFormat = opts.encodingFormat.takeIf { it.isNotBlank() },
                 user = opts.user.takeIf { it.isNotBlank() },
             )
