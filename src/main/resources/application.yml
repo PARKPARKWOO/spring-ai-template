@@ -5,21 +5,6 @@ spring:
     active: dev
   lifecycle:
     timeout-per-shutdown-phase: 60s  # 종료 단계별 타임아웃 (기본값: 30초)
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-    anthropic:
-      api-key: ${ANTHROPIC_API_KEY}
-    google:
-      genai:
-        api-key: ${GEMINI_API_KEY}
-    vertex:
-      ai:
-        gemini:
-          project-id: "ddd"
-          location: "dd"
-    grok:
-      api-key: ${GROK_API_KEY}
   mvc:
     async:
       request-timeout: 120000  # 60초 (밀리초 단위)
@@ -56,21 +41,6 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
   show-actuator: false
-
-# API 키 저장용 양방향 암호화 (AES-256-GCM). Base64 인코딩된 32바이트 키.
-# 생성 예: openssl rand -base64 32
-# 프로덕션에서는 반드시 API_KEY_ENCRYPTION_SECRET 환경 변수로 설정할 것.
-api-key:
-  encryption:
-    secret: ${API_KEY_ENCRYPTION_SECRET:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
-
-# JWT 설정
-jwt:
-  secret: ${JWT_SECRET:your-secret-key-change-this-in-production-use-a-long-random-string-at-least-32-characters}
-  expiration: 86400000  # 24시간 (밀리초)
-  refresh-expiration: 604800000  # 7일 (밀리초)
-  header: Authorization
-  prefix: "Bearer "
 
 # 캐시 설정 (Caffeine)
 cache:

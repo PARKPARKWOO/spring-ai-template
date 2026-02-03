@@ -1,6 +1,6 @@
 package com.example.demo.common.cache
 
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -15,6 +15,7 @@ import kotlin.concurrent.write
  * Redis 없이 애플리케이션 메모리에서만 동작
  */
 class LocalMemoryCache : Cache {
+    private val log = LoggerFactory.getLogger(LocalMemoryCache::class.java)
     private val cache = ConcurrentHashMap<String, CacheEntry>()
     private val locks = ConcurrentHashMap<String, ReentrantLock>()
     private val globalLock = ReentrantReadWriteLock()
@@ -45,7 +46,7 @@ class LocalMemoryCache : Cache {
             try {
                 type.cast(entry.value)
             } catch (e: ClassCastException) {
-                logger().warn("Cache type mismatch for key: $key, expected: ${type.name}, got: ${entry.value.javaClass.name}")
+                log.warn("Cache type mismatch for key: $key, expected: ${type.name}, got: ${entry.value.javaClass.name}")
                 null
             }
         }
@@ -118,7 +119,7 @@ class LocalMemoryCache : Cache {
             expiredKeys.forEach { cache.remove(it) }
 
             if (expiredKeys.isNotEmpty()) {
-                logger().debug("Evicted ${expiredKeys.size} expired cache entries")
+                log.debug("Evicted ${expiredKeys.size} expired cache entries")
             }
         }
     }

@@ -3,6 +3,7 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
+import org.slf4j.LoggerFactory
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.AnthropicApiKey
@@ -23,17 +24,25 @@ class AnthropicClient(
     tokenizerService: TokenizerService,
     apiKeyRepository: ApiKeyRepository,
 ) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
+
+    private val log = LoggerFactory.getLogger(AnthropicClient::class.java)
+
     override fun getVendor(): Vendor = Vendor.ANTHROPIC
+
     override fun generateModel(apiKey: ApiKey): ChatModel {
-        val anthropicApiKey = apiKey as? AnthropicApiKey
-            ?: throw AiServiceException(
-                ApiErrorCode.AI_API_KEY_NOT_FOUND,
-                "Anthropic 벤더에 대한 유효한 API 키 타입이 아닙니다. (API Key ID: ${apiKey.id})"
-            )
-        val api = AnthropicApi.builder()
-            .apiKey(anthropicApiKey.apiKey)
-            .build()
-        return AnthropicChatModel.builder()
+        val anthropicApiKey =
+            apiKey as? AnthropicApiKey
+                ?: throw AiServiceException(
+                    ApiErrorCode.AI_API_KEY_NOT_FOUND,
+                    "Anthropic 벤더에 대한 유효한 API 키 타입이 아닙니다. (API Key ID: ${apiKey.id})",
+                )
+        val api =
+            AnthropicApi
+                .builder()
+                .apiKey(anthropicApiKey.apiKey)
+                .build()
+        return AnthropicChatModel
+            .builder()
             .anthropicApi(api)
             .build()
     }
@@ -51,36 +60,40 @@ class AnthropicClient(
         cacheStrategy: String?,
         cacheTtl: String?,
     ): Prompt {
-        val optionsBuilder = AnthropicChatOptions.builder()
-            .maxTokens(maxTokens)
+        val optionsBuilder =
+            AnthropicChatOptions
+                .builder()
+                .maxTokens(maxTokens)
 
         model?.let { optionsBuilder.model(model) }
-        
+
         // Anthropic 캐시 옵션 설정
         if (cacheStrategy != null || cacheTtl != null) {
             val cacheOptionsBuilder = AnthropicCacheOptions.builder()
-            
+
             cacheStrategy?.let { strategyStr ->
                 try {
                     val strategy = AnthropicCacheStrategy.valueOf(strategyStr)
                     cacheOptionsBuilder.strategy(strategy)
                 } catch (e: IllegalArgumentException) {
-                    logger().warn("Invalid cache strategy: $strategyStr. Valid values: ${AnthropicCacheStrategy.values().joinToString { it.name }}")
+                    log.warn(
+                        "Invalid cache strategy: $strategyStr. Valid values: ${AnthropicCacheStrategy.values().joinToString { it.name }}",
+                    )
                 }
             }
-            
+
             cacheTtl?.let { ttlStr ->
                 try {
                     val ttl = AnthropicCacheTtl.valueOf(ttlStr)
-                    logger().info("Cache TTL requested: $ttlStr, but messageTypeTtl requires MessageType enum")
+                    log.info("Cache TTL requested: $ttlStr, but messageTypeTtl requires MessageType enum")
                 } catch (e: IllegalArgumentException) {
-                    logger().warn("Invalid cache TTL: $ttlStr. Valid values: ${AnthropicCacheTtl.values().joinToString { it.name }}")
+                    log.warn("Invalid cache TTL: $ttlStr. Valid values: ${AnthropicCacheTtl.values().joinToString { it.name }}")
                 }
             }
-            
+
             optionsBuilder.cacheOptions(cacheOptionsBuilder.build())
         }
-        
+
         return Prompt(messages, optionsBuilder.build())
     }
 }

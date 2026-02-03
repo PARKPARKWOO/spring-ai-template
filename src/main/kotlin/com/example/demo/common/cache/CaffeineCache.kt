@@ -1,6 +1,6 @@
 package com.example.demo.common.cache
 
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.stats.CacheStats
 import java.time.Duration
@@ -23,7 +23,8 @@ class CaffeineCache(
      */
     defaultTtl: Duration = Duration.ofMinutes(5),
 ) : Cache {
-    
+
+    private val log = LoggerFactory.getLogger(CaffeineCache::class.java)
     private val cache = Caffeine.newBuilder()
         .maximumSize(maxSize)
         .expireAfterWrite(defaultTtl)
@@ -39,7 +40,7 @@ class CaffeineCache(
         return try {
             type.cast(value)
         } catch (e: ClassCastException) {
-            logger().warn("Cache type mismatch for key: $key, expected: ${type.name}, got: ${value.javaClass.name}")
+            log.warn("Cache type mismatch for key: $key, expected: ${type.name}, got: ${value.javaClass.name}")
             null
         }
     }

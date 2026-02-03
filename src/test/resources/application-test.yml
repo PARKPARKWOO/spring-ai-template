@@ -20,26 +20,3 @@ spring:
     console:
       enabled: true
   # 테스트용 AI API 키 (실제 호출은 하지 않지만 설정 오류 방지)
-  ai:
-    openai:
-      api-key: test-key
-    anthropic:
-      api-key: test-key
-    google:
-      genai:
-        api-key: test-key
-    vertex:
-      ai:
-        gemini:
-          project-id: "test"
-          location: "test"
-    grok:
-      api-key: test-key
-
-# 테스트용 JWT 설정
-jwt:
-  secret: test-secret-key-for-testing-only-at-least-32-characters-long
-  expiration: 86400000
-  refresh-expiration: 604800000
-  header: Authorization
-  prefix: "Bearer "

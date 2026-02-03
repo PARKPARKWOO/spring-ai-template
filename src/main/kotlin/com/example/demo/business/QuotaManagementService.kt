@@ -9,7 +9,7 @@ import com.example.demo.model.ClientTokenQuota
 import com.example.demo.model.ContentType
 import com.example.demo.model.QuotaPolicy
 import com.example.demo.model.Vendor
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -24,6 +24,7 @@ class QuotaManagementService(
     private val clientTokenQuotaRepository: ClientTokenQuotaRepository,
     private val tokenPricingService: TokenPricingService,
 ) {
+    private val log = LoggerFactory.getLogger(QuotaManagementService::class.java)
     /**
      * 가격 기반 쿼터 할당
      */
@@ -140,14 +141,14 @@ class QuotaManagementService(
                     vendor, model, clientId, contentType, inputTokens, outputTokens
                 )
                 allocatePricingQuota(clientId, estimatedCost)
-                logger().debug("Quota allocated (PRICING_ONLY) - clientId: $clientId, cost: $estimatedCost")
+                log.debug("Quota allocated (PRICING_ONLY) - clientId: $clientId, cost: $estimatedCost")
             }
             
             QuotaPolicy.TOKEN_ONLY -> {
                 // 토큰 기반만 검증 (비용 계산 불필요)
                 val totalTokens = inputTokens + outputTokens
                 allocateTokenQuota(clientId, vendor, model, contentType, totalTokens.toLong())
-                logger().debug("Quota allocated (TOKEN_ONLY) - clientId: $clientId, tokens: $totalTokens")
+                log.debug("Quota allocated (TOKEN_ONLY) - clientId: $clientId, tokens: $totalTokens")
             }
             
             QuotaPolicy.BOTH -> {
@@ -159,12 +160,12 @@ class QuotaManagementService(
                 
                 allocatePricingQuota(clientId, estimatedCost)
                 allocateTokenQuota(clientId, vendor, model, contentType, totalTokens.toLong())
-                logger().debug("Quota allocated (BOTH) - clientId: $clientId, cost: $estimatedCost, tokens: $totalTokens")
+                log.debug("Quota allocated (BOTH) - clientId: $clientId, cost: $estimatedCost, tokens: $totalTokens")
             }
             
             QuotaPolicy.NONE -> {
                 // 제한 없음 - 아무것도 하지 않음
-                logger().debug("Quota allocated (NONE) - clientId: $clientId, no quota restrictions")
+                log.debug("Quota allocated (NONE) - clientId: $clientId, no quota restrictions")
             }
         }
     }
@@ -197,7 +198,7 @@ class QuotaManagementService(
                     vendor, model, clientId, contentType, actualInputTokens, actualOutputTokens
                 )
                 adjustPricingQuota(clientId, allocatedCost, actualCost)
-                logger().debug("Quota adjusted (PRICING_ONLY) - clientId: $clientId, allocated: $allocatedCost, actual: $actualCost")
+                log.debug("Quota adjusted (PRICING_ONLY) - clientId: $clientId, allocated: $allocatedCost, actual: $actualCost")
             }
             
             QuotaPolicy.TOKEN_ONLY -> {
@@ -205,7 +206,7 @@ class QuotaManagementService(
                 val allocatedTotalTokens = allocatedInputTokens + allocatedOutputTokens
                 val actualTotalTokens = actualInputTokens + actualOutputTokens
                 adjustTokenQuota(clientId, vendor, model, contentType, allocatedTotalTokens.toLong(), actualTotalTokens.toLong())
-                logger().debug("Quota adjusted (TOKEN_ONLY) - clientId: $clientId, allocated: $allocatedTotalTokens, actual: $actualTotalTokens")
+                log.debug("Quota adjusted (TOKEN_ONLY) - clientId: $clientId, allocated: $allocatedTotalTokens, actual: $actualTotalTokens")
             }
             
             QuotaPolicy.BOTH -> {
@@ -221,12 +222,12 @@ class QuotaManagementService(
                 
                 adjustPricingQuota(clientId, allocatedCost, actualCost)
                 adjustTokenQuota(clientId, vendor, model, contentType, allocatedTotalTokens.toLong(), actualTotalTokens.toLong())
-                logger().debug("Quota adjusted (BOTH) - clientId: $clientId, cost: $allocatedCost->$actualCost, tokens: $allocatedTotalTokens->$actualTotalTokens")
+                log.debug("Quota adjusted (BOTH) - clientId: $clientId, cost: $allocatedCost->$actualCost, tokens: $allocatedTotalTokens->$actualTotalTokens")
             }
             
             QuotaPolicy.NONE -> {
                 // 제한 없음 - 아무것도 하지 않음
-                logger().debug("Quota adjusted (NONE) - clientId: $clientId, no quota restrictions")
+                log.debug("Quota adjusted (NONE) - clientId: $clientId, no quota restrictions")
             }
         }
     }

@@ -1,6 +1,6 @@
 package com.example.demo.common.cache
 
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import jakarta.annotation.PreDestroy
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
@@ -17,6 +17,7 @@ import java.time.Duration
 class CacheConfig(
     private val applicationContext: ApplicationContext
 ) {
+    private val log = LoggerFactory.getLogger(CacheConfig::class.java)
 
     @Bean
     fun cache(
@@ -36,7 +37,7 @@ class CacheConfig(
         return try {
             applicationContext.getBean(Cache::class.java)
         } catch (e: Exception) {
-            logger().warn("Cache bean을 가져올 수 없습니다: ${e.message}")
+            log.warn("Cache bean을 가져올 수 없습니다: ${e.message}")
             null
         }
     }
@@ -54,7 +55,7 @@ class CacheConfig(
         } else {
             "0.00"
         }
-        logger().debug(
+        log.debug(
             "Cache stats - Entries: ${stats.totalEntries}, " +
                     "Hits: ${stats.hitCount}, Misses: ${stats.missCount}, " +
                     "Hit Rate: ${hitRate}%, Evictions: ${stats.evictionCount}, Locks: ${stats.lockCount}"
@@ -68,7 +69,7 @@ class CacheConfig(
     fun cleanup() {
         val cache = getCache() as? CaffeineCache ?: return
         val stats = cache.getStats()
-        logger().info(
+        log.info(
             "Cache cleanup - Total: ${stats.totalEntries}, " +
                     "Hits: ${stats.hitCount}, Misses: ${stats.missCount}, " +
                     "Evictions: ${stats.evictionCount}"

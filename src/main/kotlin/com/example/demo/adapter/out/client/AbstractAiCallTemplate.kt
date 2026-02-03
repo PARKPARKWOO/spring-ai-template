@@ -3,7 +3,6 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
-import com.example.demo.common.logger
 import com.example.demo.dto.AiApiResponse
 import com.example.demo.dto.ChatMessage
 import com.example.demo.model.ApiErrorCode

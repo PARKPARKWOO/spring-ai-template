@@ -2,7 +2,7 @@ package com.example.demo.business
 
 import com.example.demo.adapter.out.client.AiApiFactory
 import com.example.demo.business.exception.AiServiceException
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import com.example.demo.dto.AiApiRequest
 import com.example.demo.dto.AiApiResponse
 import com.example.demo.dto.VendorOptions
@@ -38,6 +38,7 @@ private data class VendorSpecificOptions(
 class AiService(
     private val aiApiFactory: AiApiFactory,
 ) {
+    private val log = LoggerFactory.getLogger(AiService::class.java)
     suspend fun call(
         aiApiRequest: AiApiRequest,
         applicationId: String,
@@ -54,7 +55,7 @@ class AiService(
                 .map { modelSpec ->
                     async(Dispatchers.IO) {
                         val start = Instant.now()
-                        logger().info("api call start={}", start)
+                        log.info("api call start={}", start)
                         val client = aiApiFactory.getClient(modelSpec.vendor)
                         val options = extractVendorOptions(modelSpec, aiApiRequest.responseSchema)
                         val timeoutMs = (aiApiRequest.timeoutSeconds ?: 120) * 1000L
@@ -78,19 +79,19 @@ class AiService(
                                     )
                                 }
                             } catch (e: TimeoutCancellationException) {
-                                logger().warn("AI API call timeout: vendor={}, applicationId={}, timeout={}ms", modelSpec.vendor, applicationId, timeoutMs, e)
+                                log.warn("AI API call timeout: vendor={}, applicationId={}, timeout={}ms", modelSpec.vendor, applicationId, timeoutMs, e)
                                 AiApiResponse.failure(ApiErrorCode.AI_MODEL_TIMEOUT.name, modelSpec.vendor)
                             } catch (e: AiServiceException) {
-                                logger().error("AI API call failed: vendor={}, applicationId={}, errorCode={}, message={}", modelSpec.vendor, applicationId, e.errorCode.name, e.message, e)
+                                log.error("AI API call failed: vendor={}, applicationId={}, errorCode={}, message={}", modelSpec.vendor, applicationId, e.errorCode.name, e.message, e)
                                 AiApiResponse.failure(e.errorCode.name, modelSpec.vendor)
                             } catch (e: Exception) {
-                                logger().error("Unexpected error during AI API call: vendor={}, applicationId={}", modelSpec.vendor, applicationId, e)
+                                log.error("Unexpected error during AI API call: vendor={}, applicationId={}", modelSpec.vendor, applicationId, e)
                                 AiApiResponse.failure(ApiErrorCode.COMMON_INTERNAL_SERVER_ERROR.name, modelSpec.vendor)
                             }
 
                         val end = Instant.now()
                         val took = Duration.between(start, end)
-                        logger().info("api call end={} took={}ms ({}s) vendor={} applicationId={}", end, took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), modelSpec.vendor, applicationId)
+                        log.info("api call end={} took={}ms ({}s) vendor={} applicationId={}", end, took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), modelSpec.vendor, applicationId)
                         response
                     }
                 }.awaitAll()
@@ -159,7 +160,7 @@ class AiService(
         applicationId: String,
     ): Flux<String> {
         val start = Instant.now()
-        logger().info("api stream call start={}", start)
+        log.info("api stream call start={}", start)
         if (aiApiRequest.models.isEmpty()) {
             throw AiServiceException(ApiErrorCode.AI_MODELS_EMPTY, "스트리밍 요청에는 최소 하나의 모델이 필요합니다.")
         }
@@ -188,15 +189,15 @@ class AiService(
                 )
                 .timeout(java.time.Duration.ofMillis(timeoutMs))
                 .map { chunk -> "[${modelSpec.vendor}:${modelSpec.version}] $chunk" }
-                .doOnComplete { logger().info("Stream completed for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, applicationId: $applicationId") }
-                .doOnError { error -> logger().error("Stream error for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, applicationId: $applicationId", error) }
+                .doOnComplete { log.info("Stream completed for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, applicationId: $applicationId") }
+                .doOnError { error -> log.error("Stream error for vendor: ${modelSpec.vendor}, model: ${modelSpec.version}, applicationId: $applicationId", error) }
         }
 
         return Flux.merge(streams)
             .doOnComplete {
                 val took = Duration.between(start, Instant.now())
-                logger().info("All streams completed. Total time: {}ms ({}s) applicationId={}", took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), applicationId)
+                log.info("All streams completed. Total time: {}ms ({}s) applicationId={}", took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), applicationId)
             }
-            .doOnError { error -> logger().error("Merged stream error for applicationId: $applicationId", error) }
+            .doOnError { error -> log.error("Merged stream error for applicationId: $applicationId", error) }
     }
 }

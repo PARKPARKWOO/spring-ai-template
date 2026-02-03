@@ -1,7 +1,7 @@
 package com.example.demo.adapter.`in`.scheduler
 
 import com.example.demo.business.QuotaManagementService
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
@@ -13,21 +13,19 @@ import org.springframework.stereotype.Component
 class QuotaResetScheduler(
     private val quotaManagementService: QuotaManagementService,
 ) {
-    companion object {
-        private val logger = logger()
-    }
-    
+    private val log = LoggerFactory.getLogger(QuotaResetScheduler::class.java)
+
     /**
      * 매 시간마다 리셋이 필요한 쿼터 확인 및 리셋
      */
     @Scheduled(cron = "0 0 * * * *") // 매 시간 정각
     fun resetQuotas() {
-        logger.info("쿼터 리셋 스케줄러 실행 시작")
+        log.info("쿼터 리셋 스케줄러 실행 시작")
         try {
             quotaManagementService.resetQuotas()
-            logger.info("쿼터 리셋 완료")
+            log.info("쿼터 리셋 완료")
         } catch (e: Exception) {
-            logger.error("쿼터 리셋 중 오류 발생", e)
+            log.error("쿼터 리셋 중 오류 발생", e)
         }
     }
 }

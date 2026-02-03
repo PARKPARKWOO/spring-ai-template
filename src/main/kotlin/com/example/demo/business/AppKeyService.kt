@@ -4,7 +4,7 @@ import com.example.demo.adapter.out.persistence.AppKeyRepository
 import com.example.demo.adapter.out.persistence.ClientRepository
 import com.example.demo.business.exception.ClientServiceException
 import com.example.demo.common.cache.Cache
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.AppKey
 import com.example.demo.model.Client
@@ -40,6 +40,8 @@ class AppKeyService(
         // 캐시 TTL (5분)
         private val CACHE_TTL = Duration.ofMinutes(5)
     }
+
+    private val log = LoggerFactory.getLogger(AppKeyService::class.java)
 
     /**
      * 새로운 AppKey 발급
@@ -93,7 +95,7 @@ class AppKeyService(
         val idToKeyCacheKey = "$CACHE_ID_TO_KEY_PREFIX${savedAppKey.id}"
         cache.set(idToKeyCacheKey, originalKey, CACHE_TTL)
         
-        logger().info("AppKey issued for clientId: $clientId, appKeyId: ${savedAppKey.id}")
+        log.info("AppKey issued for clientId: $clientId, appKeyId: ${savedAppKey.id}")
         
         return Pair(originalKey, savedAppKey)
     }
@@ -128,7 +130,7 @@ class AppKeyService(
             if (passwordEncoder.matches(appKey, key.keyHash)) {
                 // 키가 사용 가능한지 확인
                 if (!key.isUsable()) {
-                    logger().warn("AppKey is not usable: ${key.id}")
+                    log.warn("AppKey is not usable: ${key.id}")
                     // 사용 불가능한 키는 캐시에 null로 저장 (짧은 TTL)
                     cache.set(cacheKey, null, Duration.ofMinutes(1))
                     return null
@@ -231,7 +233,7 @@ class AppKeyService(
         // 특정 키를 찾기 위해 모든 활성 키를 확인해야 함)
         invalidateAppKeyCache(appKeyId)
         
-        logger().info("AppKey deactivated: $appKeyId")
+        log.info("AppKey deactivated: $appKeyId")
         return true
     }
 
@@ -262,7 +264,7 @@ class AppKeyService(
         // 캐시 무효화
         invalidateAppKeyCache(appKeyId)
         
-        logger().info("AppKey deleted: $appKeyId")
+        log.info("AppKey deleted: $appKeyId")
         return true
     }
     
@@ -280,17 +282,17 @@ class AppKeyService(
                 // 원본 키로 AppKey 엔티티 캐시 제거
                 val cacheKey = "$CACHE_KEY_PREFIX$originalKey"
                 cache.delete(cacheKey)
-                logger().debug("AppKey cache invalidated for appKeyId: $appKeyId, originalKey: ${originalKey.take(20)}...")
+                log.debug("AppKey cache invalidated for appKeyId: $appKeyId, originalKey: ${originalKey.take(20)}...")
             } else {
                 // 역방향 매핑이 캐시에 없으면 DB에서 조회 시도
                 // (캐시가 만료되었거나 발급 시 캐시에 저장되지 않은 경우)
-                logger().debug("AppKey ID to key mapping not found in cache for appKeyId: $appKeyId, will rely on TTL")
+                log.debug("AppKey ID to key mapping not found in cache for appKeyId: $appKeyId, will rely on TTL")
             }
             
             // 역방향 매핑 캐시도 제거
             cache.delete(idToKeyCacheKey)
         } catch (e: Exception) {
-            logger().warn("Failed to invalidate AppKey cache for appKeyId: $appKeyId", e)
+            log.warn("Failed to invalidate AppKey cache for appKeyId: $appKeyId", e)
         }
     }
 

@@ -1,7 +1,7 @@
 package com.example.demo.business
 
 import com.example.demo.adapter.out.client.EmbeddingApiFactory
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import com.example.demo.dto.EmbeddingApiRequest
 import com.example.demo.dto.EmbeddingApiResponse
 import com.example.demo.dto.EmbeddingModelSpec
@@ -19,6 +19,7 @@ import java.time.Instant
 class EmbeddingService(
     private val embeddingApiFactory: EmbeddingApiFactory,
 ) {
+    private val log = LoggerFactory.getLogger(EmbeddingService::class.java)
     suspend fun embed(
         request: EmbeddingApiRequest,
         applicationId: String,
@@ -26,7 +27,7 @@ class EmbeddingService(
         request.models.map { modelSpec ->
             async(Dispatchers.IO) {
                 val start = Instant.now()
-                logger().info("embedding call start={}, vendor={}, model={}, texts={}", start, modelSpec.vendor, modelSpec.version, request.texts.size)
+                log.info("embedding call start={}, vendor={}, model={}, texts={}", start, modelSpec.vendor, modelSpec.version, request.texts.size)
                 val client = embeddingApiFactory.getClient(modelSpec.vendor)
                 val embeddings = client.embed(
                     texts = request.texts,
@@ -36,7 +37,7 @@ class EmbeddingService(
                 )
                 val dimensions = embeddings.firstOrNull()?.size
                 val took = Duration.between(start, Instant.now())
-                logger().info("embedding call end={} took={}ms ({}s) vendor={} model={} applicationId={} dimensions={}", start, took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), modelSpec.vendor, modelSpec.version, applicationId, dimensions)
+                log.info("embedding call end={} took={}ms ({}s) vendor={} model={} applicationId={} dimensions={}", start, took.toMillis(), "%.3f".format(took.toMillis() / 1000.0), modelSpec.vendor, modelSpec.version, applicationId, dimensions)
                 EmbeddingApiResponse(
                     vendor = modelSpec.vendor,
                     embeddings = embeddings,

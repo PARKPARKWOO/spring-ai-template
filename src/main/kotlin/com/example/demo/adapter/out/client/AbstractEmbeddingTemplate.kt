@@ -3,7 +3,7 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.EmbeddingServiceException
-import com.example.demo.common.logger
+import org.slf4j.LoggerFactory
 import com.example.demo.dto.EmbeddingVendorOptions
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
@@ -17,6 +17,8 @@ abstract class AbstractEmbeddingTemplate(
     private val apiKeyRepository: ApiKeyRepository,
     private val tokenizerService: TokenizerService,
 ) : EmbeddingPort {
+
+    private val log = LoggerFactory.getLogger(this::class.java)
 
     abstract fun getVendor(): Vendor
     protected abstract fun generateEmbeddingModel(apiKey: ApiKey, model: String?): EmbeddingModel
@@ -49,7 +51,7 @@ abstract class AbstractEmbeddingTemplate(
                 ApiErrorCode.EMBEDDING_API_KEY_NOT_FOUND,
                 "applicationId=$applicationId, vendor=$vendor 에 대한 Embedding API 키를 찾을 수 없습니다."
             )
-        logger().info("Using API key for embedding - applicationId: $applicationId, vendor: $vendor, apiKeyId: ${apiKey.id}, model: $modelName")
+        log.info("Using API key for embedding - applicationId: $applicationId, vendor: $vendor, apiKeyId: ${apiKey.id}, model: $modelName")
         val embeddingModel: EmbeddingModel = generateEmbeddingModel(apiKey, model)
         val embeddingOptions = generateEmbeddingOptions(model, vendorOptions)
         return if (embeddingOptions != null) {
