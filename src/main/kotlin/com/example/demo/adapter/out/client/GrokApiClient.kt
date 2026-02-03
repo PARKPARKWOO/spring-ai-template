@@ -1,17 +1,12 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
-import com.example.demo.adapter.out.persistence.ClientApiKeyRepository
-import com.example.demo.business.QuotaManagementService
+import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
 import com.example.demo.model.api.XAiApiKey
-import org.springframework.ai.anthropic.AnthropicChatOptions
-import org.springframework.ai.chat.messages.SystemMessage
-import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.Prompt
@@ -23,16 +18,9 @@ import org.springframework.stereotype.Component
 
 @Component
 class GrokApiClient(
-    private val tokenizerService: TokenizerService,
-    private val quotaManagementService: QuotaManagementService,
-    private val aiUsageLogsRepository: AiUsageLogsRepository,
-    private val clientApiKeyRepository: ClientApiKeyRepository,
-) : AbstractAiCallTemplate(
-    tokenizerService = tokenizerService,
-    quotaManagementService = quotaManagementService,
-    aiUsageLogsRepository = aiUsageLogsRepository,
-    clientApiKeyRepository = clientApiKeyRepository,
-) {
+    tokenizerService: TokenizerService,
+    apiKeyRepository: ApiKeyRepository,
+) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
     override fun getVendor(): Vendor = Vendor.X_AI
 
     override fun generateModel(apiKey: ApiKey): ChatModel {

@@ -1,4 +1,8 @@
 spring:
+  application:
+    name: ${spring.profiles.active:dev}-spring-ai
+  profiles:
+    active: dev
   lifecycle:
     timeout-per-shutdown-phase: 60s  # 종료 단계별 타임아웃 (기본값: 30초)
   ai:
@@ -53,6 +57,13 @@ springdoc:
     enabled: true
   show-actuator: false
 
+# API 키 저장용 양방향 암호화 (AES-256-GCM). Base64 인코딩된 32바이트 키.
+# 생성 예: openssl rand -base64 32
+# 프로덕션에서는 반드시 API_KEY_ENCRYPTION_SECRET 환경 변수로 설정할 것.
+api-key:
+  encryption:
+    secret: ${API_KEY_ENCRYPTION_SECRET:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET:your-secret-key-change-this-in-production-use-a-long-random-string-at-least-32-characters}
@@ -65,6 +76,12 @@ jwt:
 cache:
   max-size: 10000  # 최대 캐시 항목 수
   default-ttl-minutes: 5  # 기본 TTL (분)
+
+# gRPC 서버 설정 (net.devh)
+grpc:
+  server:
+    port: ${GRPC_PORT:9090}
+
 server:
   servlet:
     session:
@@ -73,3 +90,31 @@ server:
     connection-timeout:
     max-keep-alive-requests: 200
   shutdown: graceful  # Graceful shutdown 활성화
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: false
+    hostname: spring-ai
+
+# APM (Pyroscope) - org.woo.apm 사용 시 pyroscope.server.address 필요
+pyroscope:
+  server:
+    address: ${PYROSCOPE_SERVER_ADDRESS:http://localhost:4040}
+
+# Actuator / Prometheus (배포 환경에서 스크래핑용)
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

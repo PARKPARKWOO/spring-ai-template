@@ -1,8 +1,6 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
-import com.example.demo.adapter.out.persistence.ClientApiKeyRepository
-import com.example.demo.business.QuotaManagementService
+import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.EmbeddingServiceException
 import com.example.demo.dto.EmbeddingVendorOptions
@@ -19,16 +17,9 @@ import org.springframework.stereotype.Component
 
 @Component
 class OpenAiEmbeddingClient(
-    clientApiKeyRepository: ClientApiKeyRepository,
+    apiKeyRepository: ApiKeyRepository,
     tokenizerService: TokenizerService,
-    quotaManagementService: QuotaManagementService,
-    aiUsageLogsRepository: AiUsageLogsRepository,
-) : AbstractEmbeddingTemplate(
-    clientApiKeyRepository,
-    tokenizerService,
-    quotaManagementService,
-    aiUsageLogsRepository,
-) {
+) : AbstractEmbeddingTemplate(apiKeyRepository, tokenizerService) {
 
     override fun getVendor(): Vendor = Vendor.OPENAI
 

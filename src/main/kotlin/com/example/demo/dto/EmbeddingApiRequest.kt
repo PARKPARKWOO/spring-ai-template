@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "Embedding API 요청")
 data class EmbeddingApiRequest(
+    @field:Schema(description = "Application 식별자 (호출 서비스에서 전달, API 키 조회용)", example = "app-uuid-1")
+    val applicationId: String? = null,
     @field:Schema(description = "사용할 모델 정의", required = true)
     val models: List<EmbeddingModelSpec>,
 

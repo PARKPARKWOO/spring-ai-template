@@ -1,53 +1,24 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
-import com.example.demo.adapter.out.persistence.ClientApiKeyRepository
-import com.example.demo.business.QuotaManagementService
+import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
 import com.example.demo.model.api.GoogleApiKey
-import com.google.genai.Client
-import org.springframework.ai.chat.messages.SystemMessage
-import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.chat.model.ChatResponse
-import org.springframework.ai.chat.prompt.Prompt
-import org.springframework.ai.google.genai.GoogleGenAiChatModel
-import org.springframework.ai.google.genai.GoogleGenAiChatOptions
-import org.springframework.ai.google.genai.schema.GoogleGenAiToolCallingManager
-import org.springframework.ai.model.tool.ToolCallingChatOptions
-import org.springframework.ai.support.ToolCallbacks
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
-import org.springframework.ai.vertexai.gemini.api.VertexAiGeminiApi
-import org.springframework.util.MimeTypeUtils
-import org.springframework.stereotype.Component
-import com.example.demo.common.logger
-import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import org.springframework.ai.chat.model.ChatModel
+import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
+import org.springframework.stereotype.Component
 
 @Component
 class GeminiClient(
-    private val tokenizerService: TokenizerService,
-    private val quotaManagementService: QuotaManagementService,
-    private val aiUsageLogsRepository: AiUsageLogsRepository,
-    private val clientApiKeyRepository: ClientApiKeyRepository,
+    tokenizerService: TokenizerService,
+    apiKeyRepository: ApiKeyRepository,
     private val vertexAi: VertexAiGeminiChatModel,
-): AbstractAiCallTemplate(
-    tokenizerService = tokenizerService,
-    quotaManagementService = quotaManagementService,
-    aiUsageLogsRepository = aiUsageLogsRepository,
-    clientApiKeyRepository = clientApiKeyRepository,
-) {
+) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
     override fun getVendor(): Vendor = Vendor.GOOGLE
     override fun generateModel(apiKey: ApiKey): ChatModel {
         val googleApiKey = apiKey as? GoogleApiKey

@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotEmpty
 
 @Schema(description = "AI API 요청")
 data class AiApiRequest(
+    @field:Schema(description = "Application 식별자 (호출 서비스에서 전달, API 키 조회용)", example = "app-uuid-1")
+    val applicationId: String? = null,
     @field:Schema(description = "사용할 모델 정의", required = true)
     val models: List<ModelSpec>,
     @field:Schema(description = "대화 내역 메시지 목록. userMessage, SystemMessage, AssistantMessage를 포함할 수 있습니다.", example = "[{\"role\":\"system\",\"content\":\"당신은 도움이 되는 AI 어시스턴트입니다.\"},{\"role\":\"user\",\"content\":\"안녕하세요\"}]")

@@ -5,11 +5,19 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
+@Table(
+    name = "api_key",
+    uniqueConstraints = [UniqueConstraint(name = "uk_application_vendor", columnNames = ["application_id", "vendor"])]
+)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "vendor_type", discriminatorType = DiscriminatorType.STRING)
 abstract class ApiKey(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
+
+    /** Application 식별자 (호출 서비스에서 전달, API 키 조회용) */
+    @Column(name = "application_id", nullable = false, length = 64)
+    val applicationId: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -26,8 +34,5 @@ abstract class ApiKey(
     @Column(name = "deleted_at")
     val deletedAt: LocalDateTime? = null,
 ) {
-    @OneToMany(mappedBy = "apiKey", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    val clientApiKeys: List<com.example.demo.model.ClientApiKey> = emptyList()
-    
     abstract fun getApiKeyValue(): String
 }

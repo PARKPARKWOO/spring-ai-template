@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
-import com.example.demo.common.annotation.CurrentClientId
 import io.swagger.v3.oas.annotations.Parameter
 import kotlinx.coroutines.reactor.mono
 import kotlinx.coroutines.reactor.flux
@@ -43,8 +42,6 @@ class AiController(
                 "Anthropic(toolNames, cacheStrategy, cacheTtl), OpenAI(toolNames), Grok(toolNames). " +
                 "타임아웃: timeoutSeconds 필드로 요청 타임아웃을 설정할 수 있습니다 (기본값: 120초)."
     )
-//    @SecurityRequirement(name = "bearerAuth")
-    @SecurityRequirement(name = "appKeyAuth")
     @ApiResponses(
         value = [
             SwaggerApiResponse(
@@ -117,14 +114,13 @@ class AiController(
         ]
     )
     suspend fun call(
-        @RequestBody
-        request: AiApiRequest,
-        @CurrentClientId
-        @Parameter(hidden = true)
-        clientId: Long,
+        @RequestBody request: AiApiRequest,
     ): ResponseEntity<ApiResponse<List<AiApiResponse>>> {
-        // 일반 응답: JSON
-        val result = aiService.call(request, clientId)
+        val applicationId = request.applicationId ?: throw com.example.demo.business.exception.AiServiceException(
+            com.example.demo.model.ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
+            "applicationId is required",
+        )
+        val result = aiService.call(request, applicationId)
         return ResponseEntity.ok(
             ApiResponse.success(
                 data = result,
@@ -142,8 +138,6 @@ class AiController(
                 "Anthropic(toolNames, cacheStrategy, cacheTtl), OpenAI(toolNames), Grok(toolNames). " +
                 "타임아웃: timeoutSeconds 필드로 요청 타임아웃을 설정할 수 있습니다 (기본값: 120초)."
     )
-//    @SecurityRequirement(name = "bearerAuth")
-    @SecurityRequirement(name = "appKeyAuth")
     @ApiResponses(
         value = [
             SwaggerApiResponse(
@@ -213,15 +207,13 @@ class AiController(
         ]
     )
     suspend fun stream(
-        @RequestBody
-        request: AiApiRequest,
-        @CurrentClientId
-        @Parameter(hidden = true)
-        clientId: Long,
+        @RequestBody request: AiApiRequest,
     ): ResponseEntity<Flux<String>> {
-        // 스트리밍 응답: Server-Sent Events
-        // suspend 함수에서 Flux를 반환하되, 구체적인 타입을 지정하여 Spring MVC가 올바르게 처리하도록 함
-        val stream = aiService.stream(request, clientId)
+        val applicationId = request.applicationId ?: throw com.example.demo.business.exception.AiServiceException(
+            com.example.demo.model.ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
+            "applicationId is required",
+        )
+        val stream = aiService.stream(request, applicationId)
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_EVENT_STREAM)
             .body(stream)
@@ -233,7 +225,6 @@ class AiController(
         description = "지정된 벤더(OpenAI, Google, xAI)의 Embedding 모델을 호출하여 텍스트를 벡터로 변환합니다. " +
                 "인증 방법: X-API-Key 헤더에 AppKey를 포함하세요. (AI API는 AppKey만 사용 가능합니다)"
     )
-    @SecurityRequirement(name = "appKeyAuth")
     @ApiResponses(
         value = [
             SwaggerApiResponse(
@@ -298,14 +289,13 @@ class AiController(
         ]
     )
     suspend fun embedding(
-        @RequestBody
-        request: EmbeddingApiRequest,
-        @CurrentClientId
-        @Parameter(hidden = true)
-        clientId: Long,
+        @RequestBody request: EmbeddingApiRequest,
     ): ResponseEntity<ApiResponse<List<EmbeddingApiResponse>>> {
-        // Embedding 응답 (여러 모델 지원)
-        val result = embeddingService.embed(request, clientId)
+        val applicationId = request.applicationId ?: throw com.example.demo.business.exception.AiServiceException(
+            com.example.demo.model.ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
+            "applicationId is required",
+        )
+        val result = embeddingService.embed(request, applicationId)
         return ResponseEntity.ok(
             ApiResponse.success(
                 data = result,
