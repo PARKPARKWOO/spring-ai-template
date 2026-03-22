@@ -3,6 +3,7 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
+import com.example.demo.dto.AiCallContext
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
@@ -30,49 +31,36 @@ class GrokApiClient(
                 "xAI/Grok 벤더에 대한 유효한 API 키 타입이 아닙니다. (API Key ID: ${apiKey.id})"
             )
 
-        // xAI Grok은 OpenAI API와 호환되므로 OpenAiApi 사용
-        // base URL을 xAI 엔드포인트로 설정
         val api = OpenAiApi.builder()
             .apiKey(xAiApiKey.apiKey)
-            .baseUrl("https://api.x.ai") // xAI Grok API 엔드포인트
+            .baseUrl("https://api.x.ai")
             .completionsPath("/v1/chat/completions")
             .build()
 
         return OpenAiChatModel.builder()
             .openAiApi(api)
             .defaultOptions(
-                org.springframework.ai.openai.OpenAiChatOptions.builder()
+                OpenAiChatOptions.builder()
                     .model("grok-4")
                     .build()
             )
             .build()
     }
 
-    override fun generatePrompt(
-        messages: List<Message>,
-        maxTokens: Int,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): Prompt {
+    override fun generatePrompt(context: AiCallContext, messages: List<Message>): Prompt {
         val optionsBuilder = OpenAiChatOptions.builder()
-            .maxTokens(maxTokens)
+            .maxTokens(context.effectiveMaxTokens())
 
-        model?.let { optionsBuilder.model(model) }
+        context.model?.let { optionsBuilder.model(it) }
 
         // JSON Schema가 제공되면 Structured Output 설정 (OpenAI API 호환)
+        val jsonSchema = context.jsonSchema
         if (jsonSchema != null && jsonSchema.isNotBlank()) {
             optionsBuilder.responseFormat(
                 ResponseFormat(ResponseFormat.Type.JSON_SCHEMA, jsonSchema)
             )
         }
-        
+
         return Prompt(messages, optionsBuilder.build())
     }
 }

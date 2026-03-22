@@ -3,6 +3,8 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
+import com.example.demo.dto.AiCallContext
+import com.example.demo.dto.VendorOptions
 import org.slf4j.LoggerFactory
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
@@ -47,27 +49,21 @@ class AnthropicClient(
             .build()
     }
 
-    override fun generatePrompt(
-        messages: List<Message>,
-        maxTokens: Int,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): Prompt {
+    override fun generatePrompt(context: AiCallContext, messages: List<Message>): Prompt {
         val optionsBuilder =
             AnthropicChatOptions
                 .builder()
-                .maxTokens(maxTokens)
+                .maxTokens(context.effectiveMaxTokens())
 
-        model?.let { optionsBuilder.model(model) }
+        context.model?.let { optionsBuilder.model(it) }
+
+        // Anthropic 벤더 옵션 추출
+        val anthropicOptions = context.vendorOptions as? VendorOptions.AnthropicOptions
 
         // Anthropic 캐시 옵션 설정
+        val cacheStrategy = anthropicOptions?.cacheStrategy
+        val cacheTtl = anthropicOptions?.cacheTtl
+
         if (cacheStrategy != null || cacheTtl != null) {
             val cacheOptionsBuilder = AnthropicCacheOptions.builder()
 

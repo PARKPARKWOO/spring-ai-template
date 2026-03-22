@@ -25,6 +25,10 @@ data class AiApiRequest(
     val responseSchema: String? = null,
     @field:Schema(description = "요청 타임아웃 (초 단위). AI 모델 호출 시 최대 대기 시간입니다. 기본값은 120초입니다.", example = "120", defaultValue = "120")
     val timeoutSeconds: Int? = null,
+    @field:Schema(description = "응답 최대 토큰 수. 이력서 리뷰 등 긴 응답이 필요한 경우 조정합니다. 기본값은 2000입니다.", example = "4000")
+    val maxTokens: Int? = null,
+    @field:Schema(description = "요청 타입 (로깅/모니터링용). quiz, review, interview 등", example = "review")
+    val requestType: String? = null,
 )
 
 @Schema(description = "모델 스펙")

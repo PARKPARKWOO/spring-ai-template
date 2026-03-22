@@ -4,6 +4,7 @@ import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.dto.AiApiResponse
+import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.ChatMessage
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
@@ -13,37 +14,36 @@ import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.Prompt
 import reactor.core.publisher.Flux
-import kotlin.jvm.Throws
 
+/**
+ * AI 벤더 호출 템플릿.
+ *
+ * Template Method 패턴으로 공통 흐름(메시지 변환 → API 키 조회 → 모델 생성 → 프롬프트 생성 → 호출)을
+ * 정의하고, 각 벤더 클라이언트는 generateModel()과 generatePrompt()만 구현하면 된다.
+ *
+ * AiCallContext를 통해 모든 호출 파라미터를 전달받으므로
+ * 새로운 벤더 옵션 추가 시 인터페이스 변경 없이 확장 가능하다.
+ */
 abstract class AbstractAiCallTemplate(
     private val tokenizerService: TokenizerService,
     private val apiKeyRepository: ApiKeyRepository,
 ) : AiCallPort {
-    companion object {
-        private const val DEFAULT_SYSTEM_PROMPT = """
-            이 응답에 대해서 맞고 틀리는 부분에 대해서 검증해줘 만약 틀렸다면 어디가 왜 틀렸는지 증명해
-        """
-        private const val FINANCIAL_MAX_TOKEN = 2000
-    }
 
-    abstract fun getVendor(): Vendor
+    abstract override fun getVendor(): Vendor
+
+    /**
+     * 벤더별 ChatModel 인스턴스를 생성한다.
+     * API 키 타입 검증 및 벤더별 API 클라이언트 초기화를 담당한다.
+     */
     protected abstract fun generateModel(apiKey: ApiKey): ChatModel
-    protected abstract fun generatePrompt(
-        messages: List<Message>,
-        maxTokens: Int,
-        jsonSchema: String? = null,
-        urlContexts: List<String>? = null,
-        enableGoogleSearch: Boolean? = null,
-        toolNames: List<String>? = null,
-        model: String?,
-        useCachedContent: Boolean? = null,
-        cachedContentName: String? = null,
-        cacheStrategy: String? = null,
-        cacheTtl: String? = null,
-    ): Prompt
+
+    /**
+     * 벤더별 Prompt를 생성한다.
+     * AiCallContext에서 해당 벤더에 필요한 옵션만 추출하여 사용한다.
+     */
+    protected abstract fun generatePrompt(context: AiCallContext, messages: List<Message>): Prompt
 
     protected fun convertToSpringAiMessages(chatMessages: List<ChatMessage>): List<Message> =
         chatMessages.map { msg ->
@@ -59,40 +59,19 @@ abstract class AbstractAiCallTemplate(
         return tokenizerService.getTokenCount(text, "")
     }
 
-    override suspend fun call(userMessage: String, applicationId: String, sessionId: String, model: String?): AiApiResponse =
-        call(userMessage, DEFAULT_SYSTEM_PROMPT, applicationId, sessionId, null, null, null, null, model)
-
-    @Throws(AiServiceException::class)
-    override suspend fun call(
-        userMessage: String,
-        systemPrompt: String,
-        applicationId: String,
-        sessionId: String,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): AiApiResponse {
+    override suspend fun call(context: AiCallContext): AiApiResponse {
         val vendor = getVendor()
-        val modelName = model ?: "default"
-        val messages = mutableListOf<Message>().apply {
-            if (systemPrompt.isNotBlank()) add(SystemMessage(systemPrompt))
-            add(UserMessage(userMessage))
-        }
-        val prompt = generatePrompt(messages, FINANCIAL_MAX_TOKEN, jsonSchema, urlContexts, enableGoogleSearch, toolNames, model, useCachedContent, cachedContentName, cacheStrategy, cacheTtl)
+        val springAiMessages = convertToSpringAiMessages(context.messages)
+        val prompt = generatePrompt(context, springAiMessages)
 
-        val apiKey = apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
-            ?: throw AiServiceException(ApiErrorCode.AI_API_KEY_NOT_FOUND, "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다.")
+        val apiKey = resolveApiKey(context.applicationId, vendor)
         val chatModel: ChatModel = generateModel(apiKey)
 
         val response = runCatching { chatModel.call(prompt) }.getOrElse { cause ->
             val code = when (cause) {
-                is java.net.SocketTimeoutException, is java.net.ConnectException, is java.io.IOException -> ApiErrorCode.AI_NETWORK_ERROR
+                is java.net.SocketTimeoutException,
+                is java.net.ConnectException,
+                is java.io.IOException -> ApiErrorCode.AI_NETWORK_ERROR
                 else -> ApiErrorCode.AI_MODEL_ERROR
             }
             throw AiServiceException(code, cause.message, cause)
@@ -101,90 +80,24 @@ abstract class AbstractAiCallTemplate(
         return AiApiResponse(vendor, result)
     }
 
-    override suspend fun call(
-        messages: List<ChatMessage>,
-        applicationId: String,
-        sessionId: String,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): AiApiResponse {
+    override suspend fun stream(context: AiCallContext): Flux<String> {
         val vendor = getVendor()
-        val modelName = model ?: "default"
-        val springAiMessages = convertToSpringAiMessages(messages)
-        val prompt = generatePrompt(springAiMessages, FINANCIAL_MAX_TOKEN, jsonSchema, urlContexts, enableGoogleSearch, toolNames, model, useCachedContent, cachedContentName, cacheStrategy, cacheTtl)
+        val springAiMessages = convertToSpringAiMessages(context.messages)
+        val prompt = generatePrompt(context, springAiMessages)
 
-        val apiKey = apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
-            ?: throw AiServiceException(ApiErrorCode.AI_API_KEY_NOT_FOUND, "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다.")
-        val chatModel: ChatModel = generateModel(apiKey)
-
-        val response = runCatching { chatModel.call(prompt) }.getOrElse { cause ->
-            val code = when (cause) {
-                is java.net.SocketTimeoutException, is java.net.ConnectException, is java.io.IOException -> ApiErrorCode.AI_NETWORK_ERROR
-                else -> ApiErrorCode.AI_MODEL_ERROR
-            }
-            throw AiServiceException(code, cause.message, cause)
+        val apiKey = try {
+            resolveApiKey(context.applicationId, vendor)
+        } catch (e: AiServiceException) {
+            return Flux.error(e)
         }
-        val result = response.result.output.text ?: "no content"
-        return AiApiResponse(vendor, result)
-    }
-
-    override suspend fun stream(
-        userMessage: String,
-        systemPrompt: String,
-        applicationId: String,
-        sessionId: String,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): Flux<String> {
-        val vendor = getVendor()
-        val modelName = model ?: "default"
-        val messages = mutableListOf<Message>().apply {
-            if (systemPrompt.isNotBlank()) add(SystemMessage(systemPrompt))
-            add(UserMessage(userMessage))
-        }
-        val prompt = generatePrompt(messages, FINANCIAL_MAX_TOKEN, jsonSchema, urlContexts, enableGoogleSearch, toolNames, model, useCachedContent, cachedContentName, cacheStrategy, cacheTtl)
-
-        val apiKey = apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
-            ?: return Flux.error(AiServiceException(ApiErrorCode.AI_API_KEY_NOT_FOUND, "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다."))
         val chatModel: ChatModel = generateModel(apiKey)
         return chatModel.stream(prompt).map { it.result.output.text ?: "" }
     }
 
-    override suspend fun stream(
-        messages: List<ChatMessage>,
-        applicationId: String,
-        sessionId: String,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): Flux<String> {
-        val vendor = getVendor()
-        val springAiMessages = convertToSpringAiMessages(messages)
-        val prompt = generatePrompt(springAiMessages, FINANCIAL_MAX_TOKEN, jsonSchema, urlContexts, enableGoogleSearch, toolNames, model, useCachedContent, cachedContentName, cacheStrategy, cacheTtl)
-
-        val apiKey = apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
-            ?: return Flux.error(AiServiceException(ApiErrorCode.AI_API_KEY_NOT_FOUND, "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다."))
-        val chatModel: ChatModel = generateModel(apiKey)
-        return chatModel.stream(prompt).map { it.result.output.text ?: "" }
-    }
+    private fun resolveApiKey(applicationId: String, vendor: Vendor): ApiKey =
+        apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
+            ?: throw AiServiceException(
+                ApiErrorCode.AI_API_KEY_NOT_FOUND,
+                "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다."
+            )
 }

@@ -43,6 +43,8 @@ message AiApiRequest {
   optional string response_schema = 4;
   optional int32 timeout_seconds = 5;
   string application_id = 6;  // 호출 서비스에서 전달하는 Application 식별자 (API 키 조회용)
+  optional int32 max_tokens = 7;         // 응답 최대 토큰 수 제어 (기본값: 2000)
+  optional string request_type = 8;      // 요청 타입: "quiz", "review", "interview" (로깅/모니터링용)
 }
 
 message AiApiResponse {

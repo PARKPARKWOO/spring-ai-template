@@ -39,6 +39,8 @@ class AiApiGrpcService(
                     sessionId = request.sessionId.ifBlank { "grpc" },
                     responseSchema = request.responseSchema.takeIf { it.isNotBlank() },
                     timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
+                    maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
+                    requestType = request.requestType.takeIf { it.isNotBlank() },
                 )
                 aiService.call(dto, applicationId)
             }

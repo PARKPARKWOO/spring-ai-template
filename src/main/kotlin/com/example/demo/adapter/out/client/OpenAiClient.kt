@@ -3,6 +3,7 @@ package com.example.demo.adapter.out.client
 import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
+import com.example.demo.dto.AiCallContext
 import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
@@ -29,7 +30,6 @@ class OpenAiClient(
                 "OpenAI 벤더에 대한 유효한 API 키 타입이 아닙니다. (API Key ID: ${apiKey.id})"
             )
 
-        // 현재는 기존 ChatModel 사용, 나중에 동적으로 생성하도록 수정 필요
         val api = OpenAiApi.builder()
             .apiKey(openAiApiKey.apiKey)
             .build()
@@ -38,25 +38,14 @@ class OpenAiClient(
             .build()
     }
 
-    override fun generatePrompt(
-        messages: List<Message>,
-        maxTokens: Int,
-        jsonSchema: String?,
-        urlContexts: List<String>?,
-        enableGoogleSearch: Boolean?,
-        toolNames: List<String>?,
-        model: String?,
-        useCachedContent: Boolean?,
-        cachedContentName: String?,
-        cacheStrategy: String?,
-        cacheTtl: String?,
-    ): Prompt {
+    override fun generatePrompt(context: AiCallContext, messages: List<Message>): Prompt {
         val optionsBuilder = OpenAiChatOptions.builder()
-            .maxTokens(maxTokens)
+            .maxTokens(context.effectiveMaxTokens())
 
-        model?.let { optionsBuilder.model(model) }
+        context.model?.let { optionsBuilder.model(it) }
 
         // JSON Schema가 제공되면 Structured Output 설정
+        val jsonSchema = context.jsonSchema
         if (jsonSchema != null && jsonSchema.isNotBlank()) {
             optionsBuilder.responseFormat(
                 ResponseFormat(ResponseFormat.Type.JSON_SCHEMA, jsonSchema)
