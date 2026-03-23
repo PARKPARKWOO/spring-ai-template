@@ -1,6 +1,7 @@
 package com.example.demo.model.api
 
 import com.example.demo.common.crypto.ApiKeyEncryptionConverter
+import com.example.demo.model.ApiKeyTier
 import com.example.demo.model.Vendor
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
@@ -14,6 +15,7 @@ class GoogleApiKey(
     id: Long = 0,
     applicationId: String,
     vendor: Vendor = Vendor.GOOGLE,
+    tier: ApiKeyTier = ApiKeyTier.FREE,
     description: String,
     createdAt: LocalDateTime,
     updatedAt: LocalDateTime,
@@ -28,7 +30,7 @@ class GoogleApiKey(
 
     @Column(name = "location")
     val location: String? = null,
-) : ApiKey(id, applicationId, vendor, description, createdAt, updatedAt, deletedAt) {
+) : ApiKey(id, applicationId, vendor, tier, description, createdAt, updatedAt, deletedAt) {
     
     override fun getApiKeyValue(): String = apiKey
 }

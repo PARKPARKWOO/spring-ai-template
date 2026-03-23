@@ -1,7 +1,7 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.VendorOptions
@@ -24,8 +24,9 @@ import org.springframework.stereotype.Component
 @Component
 class AnthropicClient(
     tokenizerService: TokenizerService,
-    apiKeyRepository: ApiKeyRepository,
-) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
+    apiKeyResolver: ApiKeyResolver,
+    rateLimiter: ApiKeyRateLimiter,
+) : AbstractAiCallTemplate(tokenizerService, apiKeyResolver, rateLimiter) {
 
     private val log = LoggerFactory.getLogger(AnthropicClient::class.java)
 

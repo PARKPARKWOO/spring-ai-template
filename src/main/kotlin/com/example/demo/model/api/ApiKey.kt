@@ -1,14 +1,12 @@
 package com.example.demo.model.api
 
+import com.example.demo.model.ApiKeyTier
 import com.example.demo.model.Vendor
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(
-    name = "api_key",
-    uniqueConstraints = [UniqueConstraint(name = "uk_application_vendor", columnNames = ["application_id", "vendor"])]
-)
+@Table(name = "api_key")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "vendor_type", discriminatorType = DiscriminatorType.STRING)
 abstract class ApiKey(
@@ -22,6 +20,10 @@ abstract class ApiKey(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val vendor: Vendor,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val tier: ApiKeyTier = ApiKeyTier.FREE,
 
     val description: String,
 

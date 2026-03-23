@@ -60,8 +60,8 @@ class AiServiceTest {
                 applicationId = "app-1",
                 models = listOf(ModelSpec(Vendor.ANTHROPIC, "claude-sonnet-4-5")),
                 messages = listOf(
-                    SystemChatMessage("당신은 이력서 컨설턴트입니다."),
-                    UserChatMessage("이 이력서를 리뷰해주세요."),
+                    SystemChatMessage(content = "당신은 이력서 컨설턴트입니다."),
+                    UserChatMessage(content = "이 이력서를 리뷰해주세요."),
                 ),
                 sessionId = "s1",
                 maxTokens = 4000,
@@ -107,7 +107,7 @@ class AiServiceTest {
                     ModelSpec(Vendor.ANTHROPIC, "claude-sonnet-4-5"),
                     ModelSpec(Vendor.GOOGLE, "gemini-2.5-flash"),
                 ),
-                messages = listOf(UserChatMessage("이력서 리뷰해주세요")),
+                messages = listOf(UserChatMessage(content = "이력서 리뷰해주세요")),
                 sessionId = "s1",
             )
 
@@ -132,7 +132,7 @@ class AiServiceTest {
             val request = AiApiRequest(
                 applicationId = "app-1",
                 models = listOf(ModelSpec(Vendor.ANTHROPIC, "claude-sonnet-4-5")),
-                messages = listOf(UserChatMessage("test")),
+                messages = listOf(UserChatMessage(content = "test")),
                 sessionId = "s1",
             )
 
@@ -159,7 +159,7 @@ class AiServiceTest {
             val request = AiApiRequest(
                 applicationId = "app-1",
                 models = listOf(ModelSpec(Vendor.GOOGLE, "gemini-2.5-flash")),
-                messages = listOf(UserChatMessage("이력서 리뷰")),
+                messages = listOf(UserChatMessage(content = "이력서 리뷰")),
                 sessionId = "s1",
                 responseSchema = schema,
             )
@@ -186,7 +186,7 @@ class AiServiceTest {
                 models = listOf(
                     ModelSpec(Vendor.ANTHROPIC, "claude-sonnet-4-5", VendorOptions.AnthropicOptions(cacheStrategy = "SYSTEM_ONLY"))
                 ),
-                messages = listOf(UserChatMessage("test")),
+                messages = listOf(UserChatMessage(content = "test")),
                 sessionId = "s1",
                 maxTokens = 8000,
                 requestType = "interview",
@@ -215,7 +215,7 @@ class AiServiceTest {
             val request = AiApiRequest(
                 applicationId = "app-1",
                 models = emptyList(),
-                messages = listOf(UserChatMessage("test")),
+                messages = listOf(UserChatMessage(content = "test")),
                 sessionId = "s1",
             )
 

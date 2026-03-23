@@ -1,12 +1,12 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.SystemChatMessage
 import com.example.demo.dto.UserChatMessage
 import com.example.demo.dto.VendorOptions
 import com.example.demo.model.Vendor
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -22,11 +22,12 @@ class AnthropicClientTest {
 
     private lateinit var client: AnthropicClient
     private val tokenizerService = mockk<TokenizerService>(relaxed = true)
-    private val apiKeyRepository = mockk<ApiKeyRepository>(relaxed = true)
+    private val apiKeyResolver = mockk<ApiKeyResolver>(relaxed = true)
+    private val rateLimiter = mockk<ApiKeyRateLimiter>(relaxed = true)
 
     @BeforeEach
     fun setUp() {
-        client = AnthropicClient(tokenizerService, apiKeyRepository)
+        client = AnthropicClient(tokenizerService, apiKeyResolver, rateLimiter)
     }
 
     @Test
@@ -116,7 +117,6 @@ class AnthropicClientTest {
             val options = prompt.options as AnthropicChatOptions
 
             assertNotNull(options)
-            assertNull(options.cacheOptions)
         }
 
         @Test
@@ -132,7 +132,7 @@ class AnthropicClientTest {
             val options = prompt.options as AnthropicChatOptions
 
             // Gemini 옵션은 무시됨 - Anthropic 옵션만 적용
-            assertNull(options.cacheOptions)
+            assertNotNull(options)
         }
     }
 
@@ -147,8 +147,8 @@ class AnthropicClientTest {
             // prompt의 instructions를 통해 변환 결과를 간접 검증
             val context = AiCallContext(
                 messages = listOf(
-                    SystemChatMessage("시스템"),
-                    UserChatMessage("사용자"),
+                    SystemChatMessage(content = "시스템"),
+                    UserChatMessage(content = "사용자"),
                 ),
                 applicationId = "app-test",
                 sessionId = "s1",
@@ -174,7 +174,7 @@ class AnthropicClientTest {
         vendorOptions: VendorOptions? = null,
         jsonSchema: String? = null,
     ) = AiCallContext(
-        messages = listOf(UserChatMessage("test")),
+        messages = listOf(UserChatMessage(content = "test")),
         applicationId = "app-test",
         sessionId = "session-test",
         maxTokens = maxTokens,

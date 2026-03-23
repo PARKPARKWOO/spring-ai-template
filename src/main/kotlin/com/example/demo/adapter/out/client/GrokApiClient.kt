@@ -1,7 +1,7 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.dto.AiCallContext
 import com.example.demo.model.ApiErrorCode
@@ -20,8 +20,9 @@ import org.springframework.stereotype.Component
 @Component
 class GrokApiClient(
     tokenizerService: TokenizerService,
-    apiKeyRepository: ApiKeyRepository,
-) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
+    apiKeyResolver: ApiKeyResolver,
+    rateLimiter: ApiKeyRateLimiter,
+) : AbstractAiCallTemplate(tokenizerService, apiKeyResolver, rateLimiter) {
     override fun getVendor(): Vendor = Vendor.X_AI
 
     override fun generateModel(apiKey: ApiKey): ChatModel {

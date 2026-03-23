@@ -1,11 +1,11 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.UserChatMessage
 import com.example.demo.dto.VendorOptions
 import com.example.demo.model.Vendor
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -22,13 +22,14 @@ class GeminiClientPromptTest {
 
     private lateinit var client: GeminiClient
     private val tokenizerService = mockk<TokenizerService>(relaxed = true)
-    private val apiKeyRepository = mockk<ApiKeyRepository>(relaxed = true)
+    private val apiKeyResolver = mockk<ApiKeyResolver>(relaxed = true)
+    private val rateLimiter = mockk<ApiKeyRateLimiter>(relaxed = true)
     private val vertexAi = mockk<VertexAiGeminiChatModel>(relaxed = true)
     private val urlFetchRestClient = mockk<RestClient>(relaxed = true)
 
     @BeforeEach
     fun setUp() {
-        client = GeminiClient(tokenizerService, apiKeyRepository, vertexAi, urlFetchRestClient)
+        client = GeminiClient(tokenizerService, apiKeyResolver, rateLimiter, vertexAi, urlFetchRestClient)
     }
 
     @Test
@@ -169,7 +170,7 @@ class GeminiClientPromptTest {
         vendorOptions: VendorOptions? = null,
         jsonSchema: String? = null,
     ) = AiCallContext(
-        messages = listOf(UserChatMessage("test")),
+        messages = listOf(UserChatMessage(content = "test")),
         applicationId = "app-test",
         sessionId = "session-test",
         maxTokens = maxTokens,

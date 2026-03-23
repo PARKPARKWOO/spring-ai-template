@@ -1,7 +1,7 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.VendorOptions
@@ -24,10 +24,11 @@ import org.springframework.web.client.RestClient
 @Component
 class GeminiClient(
     tokenizerService: TokenizerService,
-    apiKeyRepository: ApiKeyRepository,
+    apiKeyResolver: ApiKeyResolver,
+    rateLimiter: ApiKeyRateLimiter,
     private val vertexAi: VertexAiGeminiChatModel,
     private val urlFetchRestClient: RestClient,
-) : AbstractAiCallTemplate(tokenizerService, apiKeyRepository) {
+) : AbstractAiCallTemplate(tokenizerService, apiKeyResolver, rateLimiter) {
 
     private val log = LoggerFactory.getLogger(GeminiClient::class.java)
 

@@ -1,11 +1,9 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
-import com.example.demo.business.exception.EmbeddingServiceException
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import org.slf4j.LoggerFactory
 import com.example.demo.dto.EmbeddingVendorOptions
-import com.example.demo.model.ApiErrorCode
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
 import org.springframework.ai.embedding.EmbeddingModel
@@ -14,8 +12,9 @@ import org.springframework.ai.embedding.EmbeddingRequest
 import org.springframework.ai.embedding.EmbeddingResponse
 
 abstract class AbstractEmbeddingTemplate(
-    private val apiKeyRepository: ApiKeyRepository,
+    private val apiKeyResolver: ApiKeyResolver,
     private val tokenizerService: TokenizerService,
+    private val rateLimiter: ApiKeyRateLimiter,
 ) : EmbeddingPort {
 
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -46,14 +45,11 @@ abstract class AbstractEmbeddingTemplate(
     ): EmbeddingResponse {
         val vendor = getVendor()
         val modelName = model ?: "default"
-        val apiKey = apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
-            ?: throw EmbeddingServiceException(
-                ApiErrorCode.EMBEDDING_API_KEY_NOT_FOUND,
-                "applicationId=$applicationId, vendor=$vendor 에 대한 Embedding API 키를 찾을 수 없습니다."
-            )
+        val apiKey = apiKeyResolver.resolve(applicationId, vendor)
         log.info("Using API key for embedding - applicationId: $applicationId, vendor: $vendor, apiKeyId: ${apiKey.id}, model: $modelName")
         val embeddingModel: EmbeddingModel = generateEmbeddingModel(apiKey, model)
         val embeddingOptions = generateEmbeddingOptions(model, vendorOptions)
+        rateLimiter.record(apiKey.id)
         return if (embeddingOptions != null) {
             embeddingModel.call(EmbeddingRequest(texts, embeddingOptions))
         } else {

@@ -1,7 +1,7 @@
 package com.example.demo.adapter.out.client
 
-import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.business.TokenizerService
+import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.business.exception.EmbeddingServiceException
 import com.example.demo.dto.EmbeddingVendorOptions
 import com.example.demo.model.ApiErrorCode
@@ -17,9 +17,10 @@ import org.springframework.stereotype.Component
 
 @Component
 class GeminiEmbeddingClient(
-    apiKeyRepository: ApiKeyRepository,
+    apiKeyResolver: ApiKeyResolver,
     tokenizerService: TokenizerService,
-) : AbstractEmbeddingTemplate(apiKeyRepository, tokenizerService) {
+    rateLimiter: ApiKeyRateLimiter,
+) : AbstractEmbeddingTemplate(apiKeyResolver, tokenizerService, rateLimiter) {
 
     override fun getVendor(): Vendor = Vendor.GOOGLE
 

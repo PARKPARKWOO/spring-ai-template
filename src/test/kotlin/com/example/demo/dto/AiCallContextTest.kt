@@ -28,8 +28,8 @@ class AiCallContextTest {
                     )
                 ),
                 messages = listOf(
-                    SystemChatMessage("당신은 이력서 컨설턴트입니다."),
-                    UserChatMessage("이 이력서를 리뷰해주세요."),
+                    SystemChatMessage(content = "당신은 이력서 컨설턴트입니다."),
+                    UserChatMessage(content = "이 이력서를 리뷰해주세요."),
                 ),
                 sessionId = "session-1",
                 responseSchema = """{"type":"object","properties":{"score":{"type":"integer"}}}""",
@@ -58,7 +58,7 @@ class AiCallContextTest {
             val request = AiApiRequest(
                 applicationId = "app-1",
                 models = listOf(ModelSpec(vendor = Vendor.GOOGLE, version = "gemini-2.5-flash")),
-                messages = listOf(UserChatMessage("test")),
+                messages = listOf(UserChatMessage(content = "test")),
                 sessionId = "s1",
             )
             val context = AiCallContext.from(request, "app-1", request.models.first(), null)
@@ -83,7 +83,7 @@ class AiCallContextTest {
                 models = listOf(
                     ModelSpec(vendor = Vendor.GOOGLE, version = "gemini-2.5-flash", vendorOptions = geminiOptions)
                 ),
-                messages = listOf(UserChatMessage("test")),
+                messages = listOf(UserChatMessage(content = "test")),
                 sessionId = "s1",
             )
 
@@ -141,7 +141,7 @@ class AiCallContextTest {
         maxTokens: Int? = null,
         timeoutSeconds: Int? = null,
     ) = AiCallContext(
-        messages = listOf(UserChatMessage("test")),
+        messages = listOf(UserChatMessage(content = "test")),
         applicationId = "app-test",
         sessionId = "session-test",
         maxTokens = maxTokens,
