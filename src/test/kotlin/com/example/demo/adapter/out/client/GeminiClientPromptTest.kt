@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
 import org.springframework.web.client.RestClient
 
 @DisplayName("GeminiClient - Prompt 생성")
@@ -24,12 +23,11 @@ class GeminiClientPromptTest {
     private val tokenizerService = mockk<TokenizerService>(relaxed = true)
     private val apiKeyResolver = mockk<ApiKeyResolver>(relaxed = true)
     private val rateLimiter = mockk<ApiKeyRateLimiter>(relaxed = true)
-    private val vertexAi = mockk<VertexAiGeminiChatModel>(relaxed = true)
     private val urlFetchRestClient = mockk<RestClient>(relaxed = true)
 
     @BeforeEach
     fun setUp() {
-        client = GeminiClient(tokenizerService, apiKeyResolver, rateLimiter, vertexAi, urlFetchRestClient)
+        client = GeminiClient(tokenizerService, apiKeyResolver, rateLimiter, urlFetchRestClient)
     }
 
     @Test

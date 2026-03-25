@@ -17,7 +17,6 @@ import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.google.genai.GoogleGenAiChatModel
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 
@@ -26,7 +25,6 @@ class GeminiClient(
     tokenizerService: TokenizerService,
     apiKeyResolver: ApiKeyResolver,
     rateLimiter: ApiKeyRateLimiter,
-    private val vertexAi: VertexAiGeminiChatModel,
     private val urlFetchRestClient: RestClient,
 ) : AbstractAiCallTemplate(tokenizerService, apiKeyResolver, rateLimiter) {
 

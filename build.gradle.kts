@@ -34,7 +34,7 @@ repositories {
     }
 }
 
-extra["springAiVersion"] = "1.1.2"
+extra["springAiVersion"] = "1.1.3"
 extra["springCloudVersion"] = "2025.0.0"
 
 dependencies {
