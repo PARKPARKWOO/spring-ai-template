@@ -53,6 +53,9 @@ services:
       
       # JWT 설정
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production-use-a-long-random-string-at-least-32-characters}
+
+      # API Key encryption (AES-256-GCM, base64-encoded 32 bytes)
+      API_KEY_SECRET_BASE64: ${API_KEY_SECRET_BASE64:-P8cS8OZ5CLBhEVYVWd+nrS93Tt71C0Pj4tRqyQW5GL4=}
       
       # Spring Profile
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}

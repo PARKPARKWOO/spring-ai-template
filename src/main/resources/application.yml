@@ -36,6 +36,11 @@ spring:
       chat: none
       embedding: none
 
+# API Key encryption (AES-256-GCM)
+api:
+  key:
+    secret-base64: ${API_KEY_SECRET_BASE64:}
+
 # SpringDoc OpenAPI (Swagger) 설정
 springdoc:
   api-docs:

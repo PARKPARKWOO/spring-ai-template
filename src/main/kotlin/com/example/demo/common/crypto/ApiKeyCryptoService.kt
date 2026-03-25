@@ -14,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec
  */
 @Service
 class ApiKeyCryptoService(
+    @org.springframework.beans.factory.annotation.Value("\${api.key.secret-base64}")
     private val secretBase64: String,
 ) {
     private val aesKey: SecretKeySpec by lazy {
