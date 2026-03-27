@@ -41,6 +41,7 @@ api:
   key:
     secret-base64: ${API_KEY_SECRET_BASE64:}
 
+
 # SpringDoc OpenAPI (Swagger) 설정
 springdoc:
   api-docs:
@@ -61,7 +62,7 @@ grpc:
     port: ${GRPC_PORT:9090}
 
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${SERVER_PORT:8080}
   servlet:
     session:
       timeout: 5m

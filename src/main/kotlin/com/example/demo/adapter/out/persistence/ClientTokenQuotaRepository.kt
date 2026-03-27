@@ -10,6 +10,17 @@ import org.springframework.data.repository.query.Param
 
 interface ClientTokenQuotaRepository : JpaRepository<ClientTokenQuota, Long> {
     /**
+     * Client ID로 활성화된 토큰 기반 쿼터 조회
+     */
+    @Query("""
+        SELECT q FROM ClientTokenQuota q
+        WHERE q.clientId = :clientId
+        AND q.isActive = true
+        AND q.deletedAt IS NULL
+    """)
+    fun findByClientId(@Param("clientId") clientId: Long): List<ClientTokenQuota>
+
+    /**
      * Client ID, Vendor, Model로 활성화된 토큰 기반 쿼터 조회 (비관적 락)
      * 가장 구체적인 쿼터부터 조회 (Model > Vendor > 전체)
      */

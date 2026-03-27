@@ -15,9 +15,10 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * API Key 선택 전략.
  *
- * - PAID 키 우선, 없으면 FREE 키 사용
- * - Rate limit이 남아있는 키만 선택 (round-robin + 스킵)
- * - 모든 키가 한도 초과면 AI_QUOTA_EXCEEDED 예외
+ * 1) applicationId 전용 키 (PAID → FREE)
+ * 2) 공용 키 풀 (application_id IS NULL, PAID → FREE)
+ * 3) Rate limit이 남아있는 키만 선택 (round-robin + 스킵)
+ * 4) 모든 키가 한도 초과면 AI_QUOTA_EXCEEDED 예외
  */
 @Component
 class ApiKeyResolver(
@@ -27,51 +28,91 @@ class ApiKeyResolver(
     private val log = LoggerFactory.getLogger(ApiKeyResolver::class.java)
     private val counters = ConcurrentHashMap<String, AtomicLong>()
 
+    companion object {
+        private const val SHARED_POOL = "shared"
+    }
+
     fun resolve(applicationId: String, vendor: Vendor): ApiKey {
-        // PAID 키 우선
-        val paidKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
-            applicationId, vendor, ApiKeyTier.PAID,
+        // 1) applicationId 전용 키 (PAID → FREE)
+        resolveFromDedicated(applicationId, vendor)?.let { return it }
+
+        // 2) 공용 키 풀 (PAID → FREE)
+        resolveFromSharedPool(vendor)?.let { return it }
+
+        throw AiServiceException(
+            ApiErrorCode.AI_API_KEY_NOT_FOUND,
+            "vendor=$vendor 에 대한 API 키를 찾을 수 없습니다. (전용/공용 모두 없음)"
         )
-        if (paidKeys.isNotEmpty()) {
-            val selected = selectAvailable(paidKeys, applicationId, vendor, ApiKeyTier.PAID)
-            if (selected != null) return selected
+    }
+
+    fun resolve(applicationId: String, vendor: Vendor, tier: ApiKeyTier): ApiKey {
+        // 전용 키 시도
+        val dedicatedKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+            applicationId, vendor, tier,
+        )
+        if (dedicatedKeys.isNotEmpty()) {
+            selectAvailable(dedicatedKeys, applicationId, vendor, tier)?.let { return it }
         }
 
-        // FREE 키
-        val freeKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
-            applicationId, vendor, ApiKeyTier.FREE,
+        // 공용 키 풀 시도
+        val sharedKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+            vendor, tier,
         )
-        if (freeKeys.isNotEmpty()) {
-            val selected = selectAvailable(freeKeys, applicationId, vendor, ApiKeyTier.FREE)
-            if (selected != null) return selected
-            // 모든 FREE 키 한도 초과
+        if (sharedKeys.isNotEmpty()) {
+            selectAvailable(sharedKeys, SHARED_POOL, vendor, tier)?.let { return it }
+        }
+
+        if (dedicatedKeys.isNotEmpty() || sharedKeys.isNotEmpty()) {
             throw AiServiceException(
                 ApiErrorCode.AI_QUOTA_EXCEEDED,
-                "applicationId=$applicationId, vendor=$vendor 의 모든 FREE API 키가 rate limit에 도달했습니다."
+                "vendor=$vendor, tier=$tier 의 모든 API 키가 rate limit에 도달했습니다."
             )
         }
 
         throw AiServiceException(
             ApiErrorCode.AI_API_KEY_NOT_FOUND,
-            "applicationId=$applicationId, vendor=$vendor 에 대한 API 키를 찾을 수 없습니다."
+            "vendor=$vendor, tier=$tier 에 대한 API 키를 찾을 수 없습니다."
         )
     }
 
-    fun resolve(applicationId: String, vendor: Vendor, tier: ApiKeyTier): ApiKey {
-        val keys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
-            applicationId, vendor, tier,
+    private fun resolveFromDedicated(applicationId: String, vendor: Vendor): ApiKey? {
+        val paidKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+            applicationId, vendor, ApiKeyTier.PAID,
         )
-        if (keys.isEmpty()) {
+        if (paidKeys.isNotEmpty()) {
+            selectAvailable(paidKeys, applicationId, vendor, ApiKeyTier.PAID)?.let { return it }
+        }
+
+        val freeKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+            applicationId, vendor, ApiKeyTier.FREE,
+        )
+        if (freeKeys.isNotEmpty()) {
+            selectAvailable(freeKeys, applicationId, vendor, ApiKeyTier.FREE)?.let { return it }
+        }
+
+        return null
+    }
+
+    private fun resolveFromSharedPool(vendor: Vendor): ApiKey? {
+        val paidKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+            vendor, ApiKeyTier.PAID,
+        )
+        if (paidKeys.isNotEmpty()) {
+            selectAvailable(paidKeys, SHARED_POOL, vendor, ApiKeyTier.PAID)?.let { return it }
+        }
+
+        val freeKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+            vendor, ApiKeyTier.FREE,
+        )
+        if (freeKeys.isNotEmpty()) {
+            selectAvailable(freeKeys, SHARED_POOL, vendor, ApiKeyTier.FREE)?.let { return it }
             throw AiServiceException(
-                ApiErrorCode.AI_API_KEY_NOT_FOUND,
-                "applicationId=$applicationId, vendor=$vendor, tier=$tier 에 대한 API 키를 찾을 수 없습니다."
+                ApiErrorCode.AI_QUOTA_EXCEEDED,
+                "vendor=$vendor 의 공용 키 풀 전체가 rate limit에 도달했습니다."
             )
         }
-        return selectAvailable(keys, applicationId, vendor, tier)
-            ?: throw AiServiceException(
-                ApiErrorCode.AI_QUOTA_EXCEEDED,
-                "applicationId=$applicationId, vendor=$vendor, tier=$tier 의 모든 API 키가 rate limit에 도달했습니다."
-            )
+
+        return null
     }
 
     /**
@@ -80,11 +121,11 @@ class ApiKeyResolver(
      */
     private fun selectAvailable(
         keys: List<ApiKey>,
-        applicationId: String,
+        poolKey: String,
         vendor: Vendor,
         tier: ApiKeyTier,
     ): ApiKey? {
-        val counterKey = "$applicationId:$vendor:$tier"
+        val counterKey = "$poolKey:$vendor:$tier"
         val counter = counters.computeIfAbsent(counterKey) { AtomicLong(0) }
         val startIndex = counter.getAndIncrement()
 
@@ -93,8 +134,8 @@ class ApiKeyResolver(
             val candidate = keys[index]
             if (rateLimiter.isAvailable(candidate.id, vendor, tier)) {
                 log.debug(
-                    "API key selected - app: {}, vendor: {}, tier: {}, keyId: {}, index: {}/{}",
-                    applicationId, vendor, tier, candidate.id, index, keys.size,
+                    "API key selected - pool: {}, vendor: {}, tier: {}, keyId: {}, index: {}/{}",
+                    poolKey, vendor, tier, candidate.id, index, keys.size,
                 )
                 return candidate
             }

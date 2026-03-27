@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 @DiscriminatorValue("OPENAI")
 class OpenAiApiKey(
     id: Long = 0,
-    applicationId: String,
+    applicationId: String? = null,
     vendor: Vendor = Vendor.OPENAI,
     tier: ApiKeyTier = ApiKeyTier.FREE,
     description: String,

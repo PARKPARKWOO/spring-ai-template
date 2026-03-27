@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 @DiscriminatorValue("ANTHROPIC")
 class AnthropicApiKey(
     id: Long = 0,
-    applicationId: String,
+    applicationId: String? = null,
     vendor: Vendor = Vendor.ANTHROPIC,
     tier: ApiKeyTier = ApiKeyTier.FREE,
     description: String,

@@ -164,6 +164,59 @@ docker run -d \
 - `CONTAINER_MEMORY_LIMIT`: 컨테이너 메모리 제한 (기본값: 1G)
 - `CONTAINER_MEMORY_RESERVATION`: 컨테이너 메모리 예약 (기본값: 512M)
 
+## API Key 등록
+
+애플리케이션 기동 후 벤더별 API Key를 등록해야 AI 기능을 사용할 수 있습니다.
+
+```bash
+# Gemini (Google)
+curl -X POST http://localhost:8081/api/api-keys \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "applicationId": "YOUR_APPLICATION_ID",
+    "vendor": "GOOGLE",
+    "apiKey": "YOUR_GEMINI_API_KEY",
+    "description": "Gemini API Key",
+    "projectId": "YOUR_GCP_PROJECT_ID",
+    "location": "us-central1"
+  }'
+
+# OpenAI
+curl -X POST http://localhost:8081/api/api-keys \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "applicationId": "YOUR_APPLICATION_ID",
+    "vendor": "OPENAI",
+    "apiKey": "YOUR_OPENAI_API_KEY",
+    "description": "OpenAI API Key"
+  }'
+
+# Anthropic
+curl -X POST http://localhost:8081/api/api-keys \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "applicationId": "YOUR_APPLICATION_ID",
+    "vendor": "ANTHROPIC",
+    "apiKey": "YOUR_ANTHROPIC_API_KEY",
+    "description": "Anthropic API Key"
+  }'
+
+# xAI (Grok)
+curl -X POST http://localhost:8081/api/api-keys \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "applicationId": "YOUR_APPLICATION_ID",
+    "vendor": "X_AI",
+    "apiKey": "YOUR_GROK_API_KEY",
+    "description": "Grok API Key"
+  }'
+```
+
+- `vendor`: `OPENAI`, `ANTHROPIC`, `GOOGLE`, `X_AI`
+- `projectId`, `location`: Google(Gemini) 전용 필드
+- 등록된 키 조회: `GET /api/api-keys?applicationId=YOUR_APPLICATION_ID`
+- 키 삭제: `DELETE /api/api-keys/{id}`
+
 ## 포트
 
 - `8080`: Spring Boot 애플리케이션

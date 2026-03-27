@@ -16,7 +16,7 @@ class ApiKeyService(
 ) {
     @Transactional
     fun register(
-        applicationId: String,
+        applicationId: String? = null,
         vendor: Vendor,
         tier: ApiKeyTier,
         apiKey: String,

@@ -13,9 +13,9 @@ abstract class ApiKey(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    /** Application 식별자 (호출 서비스에서 전달, API 키 조회용) */
-    @Column(name = "application_id", nullable = false, length = 64)
-    val applicationId: String,
+    /** Application 식별자 (NULL이면 공용 키 풀, 값이 있으면 해당 앱 전용) */
+    @Column(name = "application_id", nullable = true, length = 64)
+    val applicationId: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

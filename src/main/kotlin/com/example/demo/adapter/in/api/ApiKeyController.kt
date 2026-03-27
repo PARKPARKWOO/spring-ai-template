@@ -67,7 +67,7 @@ class ApiKeyController(
 }
 
 data class RegisterApiKeyRequest(
-    val applicationId: String,
+    val applicationId: String? = null,
     val vendor: Vendor,
     val tier: ApiKeyTier = ApiKeyTier.FREE,
     val apiKey: String,
@@ -78,7 +78,7 @@ data class RegisterApiKeyRequest(
 
 data class ApiKeyResponse(
     val id: Long,
-    val applicationId: String,
+    val applicationId: String?,
     val vendor: Vendor,
     val tier: ApiKeyTier,
     val description: String,

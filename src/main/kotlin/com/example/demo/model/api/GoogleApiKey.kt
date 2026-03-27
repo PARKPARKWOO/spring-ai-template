@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 @DiscriminatorValue("GOOGLE")
 class GoogleApiKey(
     id: Long = 0,
-    applicationId: String,
+    applicationId: String? = null,
     vendor: Vendor = Vendor.GOOGLE,
     tier: ApiKeyTier = ApiKeyTier.FREE,
     description: String,

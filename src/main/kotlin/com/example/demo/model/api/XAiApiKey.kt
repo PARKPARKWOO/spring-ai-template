@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 @DiscriminatorValue("X_AI")
 class XAiApiKey(
     id: Long = 0,
-    applicationId: String,
+    applicationId: String? = null,
     vendor: Vendor = Vendor.X_AI,
     tier: ApiKeyTier = ApiKeyTier.FREE,
     description: String,
