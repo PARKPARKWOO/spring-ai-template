@@ -1,5 +1,6 @@
 package com.example.demo.adapter.`in`.api
 
+import com.example.demo.adapter.out.persistence.ApiKeyRepository
 import com.example.demo.adapter.out.persistence.ClientPricingQuotaRepository
 import com.example.demo.adapter.out.persistence.ClientRepository
 import com.example.demo.adapter.out.persistence.ClientTokenQuotaRepository
@@ -27,6 +28,7 @@ class BackofficeApiController(
     private val clientTokenQuotaRepository: ClientTokenQuotaRepository,
     private val appKeyService: AppKeyService,
     private val passwordEncoder: PasswordEncoder,
+    private val apiKeyRepository: ApiKeyRepository,
 ) {
     // === Client Management ===
 
@@ -98,6 +100,16 @@ class BackofficeApiController(
     ): ResponseEntity<ApiResponse<Unit>> {
         appKeyService.deactivateAppKey(appKeyId, clientId)
         return ResponseEntity.ok(ApiResponse.success(message = "AppKey가 비활성화되었습니다."))
+    }
+
+    // === API Key Management (all) ===
+
+    @GetMapping("/api-keys")
+    @Operation(summary = "전체 API Key 목록 조회")
+    fun listAllApiKeys(): ResponseEntity<ApiResponse<Any>> {
+        val keys = apiKeyRepository.findAll().filter { it.deletedAt == null }
+            .map { ApiKeyResponse.from(it) }
+        return ResponseEntity.ok(ApiResponse.success(data = keys))
     }
 
     // === Token Pricing Policy Management ===
