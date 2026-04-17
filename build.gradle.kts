@@ -60,6 +60,9 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("com.mysql:mysql-connector-j")
+
+    // log-loki
+    implementation("com.github.loki4j:loki-logback-appender:1.5.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.mockk:mockk:1.13.13")
