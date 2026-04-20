@@ -22,6 +22,9 @@ interface ApiKeyRepository : JpaRepository<ApiKey, Long> {
     /** Application별 API 키 목록 (삭제되지 않은 것만) */
     fun findByApplicationIdAndDeletedAtIsNull(applicationId: String): List<ApiKey>
 
+    /** 전체 API 키 목록 (삭제되지 않은 것만) - admin 조회용 */
+    fun findAllByDeletedAtIsNull(): List<ApiKey>
+
     /** 공용 키 풀 조회 (application_id IS NULL) */
     fun findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
         vendor: Vendor,

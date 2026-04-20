@@ -39,9 +39,9 @@ class ApiKeyController(
     }
 
     @GetMapping
-    @Operation(summary = "API Key 목록 조회", description = "Application별 등록된 API Key 목록을 조회합니다.")
+    @Operation(summary = "API Key 목록 조회", description = "등록된 API Key 목록을 조회합니다. applicationId 생략 시 전체(공용 풀 포함) 조회.")
     fun list(
-        @RequestParam applicationId: String,
+        @RequestParam(required = false) applicationId: String?,
         @RequestParam(required = false) vendor: Vendor?,
         @RequestParam(required = false) tier: ApiKeyTier?,
     ): ResponseEntity<ApiResponse<List<ApiKeyResponse>>> {

@@ -65,10 +65,16 @@ class ApiKeyService(
     }
 
     fun list(
-        applicationId: String,
+        applicationId: String? = null,
         vendor: Vendor? = null,
         tier: ApiKeyTier? = null,
     ): List<ApiKey> {
+        if (applicationId == null) {
+            // 전체 조회 (공용 풀 + 모든 application 키). in-memory vendor/tier 필터.
+            return apiKeyRepository.findAllByDeletedAtIsNull()
+                .filter { vendor == null || it.vendor == vendor }
+                .filter { tier == null || it.tier == tier }
+        }
         if (vendor != null && tier != null) {
             return apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(applicationId, vendor, tier)
         }
