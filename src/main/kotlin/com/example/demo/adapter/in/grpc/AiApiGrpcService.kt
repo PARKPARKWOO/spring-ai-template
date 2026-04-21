@@ -2,10 +2,13 @@ package com.example.demo.adapter.`in`.grpc
 
 import com.example.demo.business.AiService
 import com.example.demo.business.EmbeddingService
+import com.example.demo.business.VisionService
 import com.example.demo.dto.ChatMessage
 import com.example.demo.dto.EmbeddingApiRequest
 import com.example.demo.dto.EmbeddingModelSpec
+import com.example.demo.dto.ImageSource
 import com.example.demo.dto.ModelSpec
+import com.example.demo.dto.VisionRequest
 import com.example.demo.model.Vendor
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.runBlocking
@@ -22,6 +25,7 @@ import reactor.core.publisher.Mono
 class AiApiGrpcService(
     private val aiService: AiService,
     private val embeddingService: EmbeddingService,
+    private val visionService: VisionService,
 ) : AiApiServiceGrpc.AiApiServiceImplBase() {
 
     override fun chat(request: AiProto.AiApiRequest, responseObserver: StreamObserver<AiProto.AiApiResponse>) {
@@ -103,6 +107,64 @@ class AiApiGrpcService(
                 { responseObserver.onNext(it); responseObserver.onCompleted() },
                 { responseObserver.onError(it) }
             )
+    }
+
+    override fun vision(
+        request: AiProto.AiVisionRequest,
+        responseObserver: StreamObserver<AiProto.AiVisionResponse>,
+    ) {
+        val applicationId = request.applicationId.ifBlank { null }
+            ?: run {
+                responseObserver.onError(IllegalArgumentException("application_id is required"))
+                return
+            }
+        Mono.fromCallable {
+            runBlocking {
+                val dto = VisionRequest(
+                    applicationId = applicationId,
+                    models = request.modelsList.map { protoToModelSpec(it) },
+                    messages = request.messagesList.map { protoToChatMessage(it) },
+                    images = request.imagesList.map { protoToImageSource(it) },
+                    sessionId = "grpc",
+                    timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
+                    maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
+                    requestType = request.requestType.takeIf { it.isNotBlank() },
+                )
+                visionService.call(dto, applicationId)
+            }
+        }
+            .flatMap { responses ->
+                val first = responses.firstOrNull()
+                if (first == null) {
+                    Mono.error(IllegalStateException("No response"))
+                } else {
+                    Mono.just(
+                        AiProto.AiVisionResponse.newBuilder()
+                            .setVendor(vendorToProto(first.vendor))
+                            .setResult(first.result)
+                            .setIsError(first.isError)
+                            .build()
+                    )
+                }
+            }
+            .subscribe(
+                { responseObserver.onNext(it); responseObserver.onCompleted() },
+                { responseObserver.onError(it) }
+            )
+    }
+
+    private fun protoToImageSource(p: AiProto.ImageInput): ImageSource = when (p.sourceCase) {
+        AiProto.ImageInput.SourceCase.BYTES -> ImageSource.Base64(
+            data = java.util.Base64.getEncoder().encodeToString(p.bytes.data.toByteArray()),
+            mimeType = p.bytes.mimeType.ifBlank { "image/jpeg" },
+        )
+        AiProto.ImageInput.SourceCase.URL -> ImageSource.Url(url = p.url.url)
+        AiProto.ImageInput.SourceCase.STORAGE_KEY -> ImageSource.StorageKey(
+            bucket = p.storageKey.bucket,
+            key = p.storageKey.key,
+        )
+        AiProto.ImageInput.SourceCase.SOURCE_NOT_SET, null ->
+            throw IllegalArgumentException("ImageInput.source must be set (bytes|url|storage_key)")
     }
 
     private fun protoToModelSpec(p: AiProto.ModelSpec): ModelSpec {
