@@ -25,10 +25,17 @@ class ImageResolver(
     private val storageInternalUrl: String,
     @Value("\${vision.max-image-bytes:20971520}") // 20 MB
     private val maxImageBytes: Long,
+    @Value("\${vision.max-document-bytes:52428800}") // 50 MB (Gemini inlineData 한도 20MB 초과 시 거부)
+    private val maxDocumentBytes: Long,
 ) {
     private val log = LoggerFactory.getLogger(ImageResolver::class.java)
     private val allowedHosts: Set<String> =
         allowedHostsProp.split(',').map { it.trim() }.filter { it.isNotBlank() }.toSet()
+
+    companion object {
+        private const val PDF_MIME = "application/pdf"
+        private const val GEMINI_INLINE_LIMIT_BYTES: Long = 20L * 1024 * 1024
+    }
 
     private val allowedMimeTypes: Set<String> = setOf(
         "image/png",
@@ -38,6 +45,7 @@ class ImageResolver(
         "image/gif",
         "image/heic",
         "image/heif",
+        PDF_MIME,
     )
 
     data class ResolvedImage(val bytes: ByteArray, val mimeType: String)
@@ -58,7 +66,7 @@ class ImageResolver(
                 "Base64 디코딩 실패: ${e.message}",
             )
         }
-        ensureSize(bytes.size.toLong())
+        ensureSize(bytes.size.toLong(), source.mimeType)
         return ResolvedImage(bytes, source.mimeType)
     }
 
@@ -93,20 +101,20 @@ class ImageResolver(
                 .retrieve()
                 .toEntity(ByteArray::class.java)
         } catch (e: Exception) {
-            log.warn("이미지 가져오기 실패: uri={} err={}", uri, e.message)
+            log.warn("미디어 가져오기 실패: uri={} err={}", uri, e.message)
             throw AiServiceException(
                 ApiErrorCode.AI_NETWORK_ERROR,
-                "이미지 가져오기 실패: ${e.message}",
+                "미디어 가져오기 실패: ${e.message}",
             )
         }
         val bytes = response.body ?: throw AiServiceException(
             ApiErrorCode.AI_NETWORK_ERROR,
-            "이미지 응답 본문이 비어있습니다",
+            "미디어 응답 본문이 비어있습니다",
         )
-        ensureSize(bytes.size.toLong())
         val contentType = response.headers.contentType?.toString() ?: "image/jpeg"
         val normalized = contentType.substringBefore(';').trim()
         ensureAllowedMime(normalized)
+        ensureSize(bytes.size.toLong(), normalized)
         return ResolvedImage(bytes, normalized)
     }
 
@@ -119,17 +127,25 @@ class ImageResolver(
         }
     }
 
-    private fun ensureSize(size: Long) {
-        if (size > maxImageBytes) {
-            throw AiServiceException(
-                ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
-                "이미지 크기 한도를 초과했습니다: ${size}B > ${maxImageBytes}B",
-            )
-        }
+    private fun ensureSize(size: Long, mimeType: String) {
         if (size <= 0) {
             throw AiServiceException(
                 ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
-                "이미지 바이트가 비어있습니다",
+                "미디어 바이트가 비어있습니다",
+            )
+        }
+        val limit = if (mimeType == PDF_MIME) maxDocumentBytes else maxImageBytes
+        if (size > limit) {
+            throw AiServiceException(
+                ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
+                "미디어 크기 한도를 초과했습니다: ${size}B > ${limit}B (mimeType=$mimeType)",
+            )
+        }
+        // PDF 는 Gemini inlineData 한도가 20MB. 그 이상은 향후 File API 분기 대상이지만 현재는 거부.
+        if (mimeType == PDF_MIME && size > GEMINI_INLINE_LIMIT_BYTES) {
+            throw AiServiceException(
+                ApiErrorCode.AI_REQUEST_VALIDATION_FAILED,
+                "Gemini inlineData PDF 한도(20MB)를 초과했습니다: ${size}B. 현재 File API 분기 미지원.",
             )
         }
     }

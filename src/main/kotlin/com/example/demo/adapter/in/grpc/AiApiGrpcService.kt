@@ -153,6 +153,58 @@ class AiApiGrpcService(
             )
     }
 
+    override fun document(
+        request: AiProto.AiDocumentRequest,
+        responseObserver: StreamObserver<AiProto.AiDocumentResponse>,
+    ) {
+        val applicationId = request.applicationId.ifBlank { null }
+            ?: run {
+                responseObserver.onError(IllegalArgumentException("application_id is required"))
+                return
+            }
+        Mono.fromCallable {
+            runBlocking {
+                // Document 는 Vision 과 동일한 fetch + ImageResolver(application/pdf 화이트리스트 포함) 파이프라인을
+                // 재사용. DocumentInput.Url -> ImageSource.Url 로 매핑하고 VisionService 가 처리.
+                val dto = VisionRequest(
+                    applicationId = applicationId,
+                    models = request.modelsList.map { protoToModelSpec(it) },
+                    messages = request.messagesList.map { protoToChatMessage(it) },
+                    images = request.documentsList.map { protoToDocumentSource(it) },
+                    sessionId = request.sessionId.ifBlank { "grpc" },
+                    timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
+                    maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
+                    requestType = request.requestType.takeIf { it.isNotBlank() },
+                )
+                visionService.call(dto, applicationId)
+            }
+        }
+            .flatMap { responses ->
+                val first = responses.firstOrNull()
+                if (first == null) {
+                    Mono.error(IllegalStateException("No response"))
+                } else {
+                    Mono.just(
+                        AiProto.AiDocumentResponse.newBuilder()
+                            .setVendor(vendorToProto(first.vendor))
+                            .setResult(first.result)
+                            .setIsError(first.isError)
+                            .build()
+                    )
+                }
+            }
+            .subscribe(
+                { responseObserver.onNext(it); responseObserver.onCompleted() },
+                { responseObserver.onError(it) }
+            )
+    }
+
+    private fun protoToDocumentSource(p: AiProto.DocumentInput): ImageSource = when (p.sourceCase) {
+        AiProto.DocumentInput.SourceCase.URL -> ImageSource.Url(url = p.url.url)
+        AiProto.DocumentInput.SourceCase.SOURCE_NOT_SET, null ->
+            throw IllegalArgumentException("DocumentInput.source must be set (currently only url is supported)")
+    }
+
     private fun protoToImageSource(p: AiProto.ImageInput): ImageSource = when (p.sourceCase) {
         AiProto.ImageInput.SourceCase.BYTES -> ImageSource.Base64(
             data = java.util.Base64.getEncoder().encodeToString(p.bytes.data.toByteArray()),

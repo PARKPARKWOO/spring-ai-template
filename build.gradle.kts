@@ -91,7 +91,7 @@ dependencies {
     // gRPC (ai.proto는 common grpc 모듈에서 관리, org.woo:grpc 의존성으로 사용)
     implementation("org.woo:http:0.2.1")
     implementation("org.woo:apm:0.2.7")
-    implementation("org.woo:grpc:0.8.0")
+    implementation("org.woo:grpc:0.9.0")
     implementation("io.grpc:grpc-protobuf:$grpcVersion")
     implementation("io.grpc:grpc-stub:$grpcVersion")
     implementation("io.grpc:grpc-kotlin-stub:1.4.1")
