@@ -96,7 +96,9 @@ jobs:
     steps:
       - name: Set environment variable based on input
         run: |
-          echo "DEPLOY_ENV=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          # workflow_dispatch 일 때만 inputs.environment 가 채워짐.
+          # push: develop 트리거에선 빈 값이 되어 server-deploy 의 sed 가 'compose//server/...' 로 깨졌었다.
+          echo "DEPLOY_ENV=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
 
       - name: Trigger deploy dispatch
         run: |
