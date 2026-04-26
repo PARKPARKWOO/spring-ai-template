@@ -132,7 +132,7 @@ class ApiKeyResolver(
         for (i in keys.indices) {
             val index = ((startIndex + i) % keys.size).toInt()
             val candidate = keys[index]
-            if (rateLimiter.isAvailable(candidate.id, vendor, tier)) {
+            if (rateLimiter.isAvailable(candidate.id, vendor, tier, candidate.applicationId)) {
                 log.debug(
                     "API key selected - pool: {}, vendor: {}, tier: {}, keyId: {}, index: {}/{}",
                     poolKey, vendor, tier, candidate.id, index, keys.size,

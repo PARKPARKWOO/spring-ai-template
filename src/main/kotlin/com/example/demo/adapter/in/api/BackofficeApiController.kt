@@ -6,7 +6,9 @@ import com.example.demo.adapter.out.persistence.ClientRepository
 import com.example.demo.adapter.out.persistence.ClientTokenQuotaRepository
 import com.example.demo.adapter.out.persistence.TokenPricingPolicyRepository
 import com.example.demo.business.AppKeyService
+import com.example.demo.common.ratelimit.RateLimitPolicyService
 import com.example.demo.dto.ApiResponse
+import com.example.demo.model.ApiKeyTier
 import com.example.demo.model.Client
 import com.example.demo.model.TokenPricingPolicy
 import com.example.demo.model.Vendor
@@ -29,6 +31,7 @@ class BackofficeApiController(
     private val appKeyService: AppKeyService,
     private val passwordEncoder: PasswordEncoder,
     private val apiKeyRepository: ApiKeyRepository,
+    private val rateLimitPolicyService: RateLimitPolicyService,
 ) {
     // === Client Management ===
 
@@ -166,7 +169,92 @@ class BackofficeApiController(
         val quotas = clientTokenQuotaRepository.findByClientId(clientId)
         return ResponseEntity.ok(ApiResponse.success(data = quotas))
     }
+
+    // === Rate Limit Policy ===
+
+    @GetMapping("/rate-limit-policies")
+    @Operation(summary = "Rate Limit 정책 목록 조회")
+    fun listRateLimitPolicies(): ResponseEntity<ApiResponse<List<RateLimitPolicyResponse>>> {
+        val policies = rateLimitPolicyService.findAll().map { RateLimitPolicyResponse.from(it) }
+        return ResponseEntity.ok(ApiResponse.success(data = policies))
+    }
+
+    @PostMapping("/rate-limit-policies")
+    @Operation(summary = "Rate Limit 정책 생성")
+    fun createRateLimitPolicy(
+        @RequestBody request: CreateRateLimitPolicyRequest,
+    ): ResponseEntity<ApiResponse<RateLimitPolicyResponse>> {
+        val saved = rateLimitPolicyService.create(
+            vendor = request.vendor,
+            tier = request.tier,
+            applicationId = request.applicationId,
+            rpm = request.rpm,
+            rpd = request.rpd,
+        )
+        return ResponseEntity.ok(
+            ApiResponse.success(
+                data = RateLimitPolicyResponse.from(saved),
+                message = "Rate Limit 정책이 생성되었습니다.",
+            ),
+        )
+    }
+
+    @PutMapping("/rate-limit-policies/{id}")
+    @Operation(summary = "Rate Limit 정책 수정 (rpm/rpd)")
+    fun updateRateLimitPolicy(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateRateLimitPolicyRequest,
+    ): ResponseEntity<ApiResponse<RateLimitPolicyResponse>> {
+        val saved = rateLimitPolicyService.update(id, request.rpm, request.rpd)
+        return ResponseEntity.ok(
+            ApiResponse.success(
+                data = RateLimitPolicyResponse.from(saved),
+                message = "Rate Limit 정책이 수정되었습니다.",
+            ),
+        )
+    }
+
+    @DeleteMapping("/rate-limit-policies/{id}")
+    @Operation(summary = "Rate Limit 정책 삭제 (soft delete)")
+    fun deleteRateLimitPolicy(@PathVariable id: Long): ResponseEntity<ApiResponse<Unit>> {
+        rateLimitPolicyService.softDelete(id)
+        return ResponseEntity.ok(ApiResponse.success(message = "Rate Limit 정책이 삭제되었습니다."))
+    }
 }
+
+data class RateLimitPolicyResponse(
+    val id: Long,
+    val vendor: Vendor,
+    val tier: ApiKeyTier,
+    val applicationId: String?,
+    val rpm: Int,
+    val rpd: Int,
+) {
+    companion object {
+        fun from(e: com.example.demo.model.ratelimit.RateLimitPolicyEntity) =
+            RateLimitPolicyResponse(
+                id = e.id,
+                vendor = e.vendor,
+                tier = e.tier,
+                applicationId = e.applicationId,
+                rpm = e.rpm,
+                rpd = e.rpd,
+            )
+    }
+}
+
+data class CreateRateLimitPolicyRequest(
+    val vendor: Vendor,
+    val tier: ApiKeyTier,
+    val applicationId: String? = null,
+    val rpm: Int,
+    val rpd: Int,
+)
+
+data class UpdateRateLimitPolicyRequest(
+    val rpm: Int,
+    val rpd: Int,
+)
 
 data class CreateClientRequest(
     val name: String,

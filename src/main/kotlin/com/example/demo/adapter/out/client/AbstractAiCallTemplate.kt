@@ -77,7 +77,7 @@ abstract class AbstractAiCallTemplate(
                 if (is429Error(cause) && attempt < maxRetries) {
                     log.warn("429 rate limited on keyId: {}, attempt: {}/{}, retrying with another key",
                         apiKey.id, attempt + 1, maxRetries)
-                    rateLimiter.markRateLimited(apiKey.id, vendor, apiKey.tier)
+                    rateLimiter.markRateLimited(apiKey.id, vendor, apiKey.tier, apiKey.applicationId)
                     lastException = cause
                     continue
                 }

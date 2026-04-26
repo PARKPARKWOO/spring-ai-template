@@ -82,7 +82,7 @@ class GeminiVisionClient(
                         "429 rate limited (vision) keyId={} attempt={}/{}",
                         apiKey.id, attempt + 1, maxRetries,
                     )
-                    rateLimiter.markRateLimited(apiKey.id, Vendor.GOOGLE, apiKey.tier)
+                    rateLimiter.markRateLimited(apiKey.id, Vendor.GOOGLE, apiKey.tier, apiKey.applicationId)
                     lastException = cause
                     continue
                 }
