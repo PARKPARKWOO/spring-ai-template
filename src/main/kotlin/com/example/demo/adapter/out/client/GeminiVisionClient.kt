@@ -4,6 +4,7 @@ import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.common.ratelimit.ApiKeyRateLimiter
+import com.example.demo.common.ratelimit.RetryAfterParser
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.AssistantChatMessage
 import com.example.demo.dto.ChatMessage
@@ -85,11 +86,15 @@ class GeminiVisionClient(
                 return VisionResponse(Vendor.GOOGLE, result)
             } catch (cause: Throwable) {
                 if (is429Error(cause) && attempt < maxRetries) {
+                    val cooldownMs = RetryAfterParser.parse(cause.message)
+                        ?: ApiKeyRateLimiter.DEFAULT_COOLDOWN_MS
                     log.warn(
-                        "429 rate limited (vision) keyId={} attempt={}/{}",
-                        apiKey.id, attempt + 1, maxRetries,
+                        "429 rate limited (vision) keyId={} attempt={}/{} cooldown={}ms",
+                        apiKey.id, attempt + 1, maxRetries, cooldownMs,
                     )
-                    rateLimiter.markRateLimited(apiKey.id, Vendor.GOOGLE, apiKey.tier, apiKey.applicationId)
+                    rateLimiter.markRateLimited(
+                        apiKey.id, Vendor.GOOGLE, apiKey.tier, apiKey.applicationId, cooldownMs,
+                    )
                     lastException = cause
                     continue
                 }

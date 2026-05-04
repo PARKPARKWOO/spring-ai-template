@@ -4,6 +4,7 @@ import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.common.ratelimit.ApiKeyRateLimiter
+import com.example.demo.common.ratelimit.RetryAfterParser
 import com.example.demo.dto.AiApiResponse
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.ChatMessage
@@ -92,9 +93,16 @@ abstract class AbstractAiCallTemplate(
                 return AiApiResponse(vendor, result)
             } catch (cause: Throwable) {
                 if (is429Error(cause) && attempt < maxRetries) {
-                    log.warn("429 rate limited on keyId: {}, attempt: {}/{}, retrying with another key",
-                        apiKey.id, attempt + 1, maxRetries)
-                    rateLimiter.markRateLimited(apiKey.id, vendor, apiKey.tier, apiKey.applicationId)
+                    val cooldownMs = RetryAfterParser.parse(cause.message)
+                        ?: ApiKeyRateLimiter.DEFAULT_COOLDOWN_MS
+                    log.warn(
+                        "429 rate limited on keyId: {}, attempt: {}/{}, cooldown={}ms (parsed={}), retrying with another key",
+                        apiKey.id, attempt + 1, maxRetries, cooldownMs,
+                        RetryAfterParser.parse(cause.message) != null,
+                    )
+                    rateLimiter.markRateLimited(
+                        apiKey.id, vendor, apiKey.tier, apiKey.applicationId, cooldownMs,
+                    )
                     lastException = cause
                     continue
                 }
