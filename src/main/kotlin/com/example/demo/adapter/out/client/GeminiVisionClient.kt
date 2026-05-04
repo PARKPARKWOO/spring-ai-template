@@ -1,5 +1,7 @@
 package com.example.demo.adapter.out.client
 
+import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
+import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.dto.AiCallContext
@@ -9,7 +11,9 @@ import com.example.demo.dto.ImageSource
 import com.example.demo.dto.SystemChatMessage
 import com.example.demo.dto.UserChatMessage
 import com.example.demo.dto.VisionResponse
+import com.example.demo.model.AiUsageLogs
 import com.example.demo.model.ApiErrorCode
+import com.example.demo.model.ContentType
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
 import com.example.demo.model.api.GoogleApiKey
@@ -41,6 +45,8 @@ class GeminiVisionClient(
     private val apiKeyResolver: ApiKeyResolver,
     private val rateLimiter: ApiKeyRateLimiter,
     private val imageResolver: ImageResolver,
+    private val tokenizerService: TokenizerService,
+    private val aiUsageLogsRepository: AiUsageLogsRepository,
 ) : VisionCallPort {
 
     private val log = LoggerFactory.getLogger(GeminiVisionClient::class.java)
@@ -75,6 +81,7 @@ class GeminiVisionClient(
                 val response = chatModel.call(prompt)
                 rateLimiter.record(apiKey.id)
                 val result = response.result.output.text ?: "no content"
+                recordUsage(response, apiKey, context, springAiMessages, result)
                 return VisionResponse(Vendor.GOOGLE, result)
             } catch (cause: Throwable) {
                 if (is429Error(cause) && attempt < maxRetries) {
@@ -146,5 +153,36 @@ class GeminiVisionClient(
     private fun is429Error(cause: Throwable): Boolean {
         val msg = cause.message ?: return false
         return msg.contains("429") || msg.contains("RESOURCE_EXHAUSTED", ignoreCase = true)
+    }
+
+    private fun recordUsage(
+        response: org.springframework.ai.chat.model.ChatResponse,
+        apiKey: ApiKey,
+        context: AiCallContext,
+        springAiMessages: List<Message>,
+        responseText: String,
+    ) {
+        try {
+            val usage = response.metadata?.usage
+            val promptTokens = usage?.promptTokens?.toInt()
+                ?: tokenizerService.getTokenCount(springAiMessages.joinToString(" ") { it.text }, "")
+            val completionTokens = usage?.completionTokens?.toInt()
+                ?: tokenizerService.getTokenCount(responseText, "")
+
+            aiUsageLogsRepository.save(
+                AiUsageLogs.create(
+                    apiKeyId = apiKey.id,
+                    applicationId = apiKey.applicationId,
+                    model = context.model ?: "unknown",
+                    vendor = Vendor.GOOGLE,
+                    contentType = ContentType.IMAGE,
+                    promptToken = promptTokens,
+                    completionToken = completionTokens,
+                    sessionId = context.sessionId,
+                ),
+            )
+        } catch (e: Exception) {
+            log.warn("vision ai_usage_logs save 실패 (keyId={}): {}", apiKey.id, e.message)
+        }
     }
 }

@@ -76,10 +76,10 @@ class ApiKeyService(
                 .filter { tier == null || it.tier == tier }
         }
         if (vendor != null && tier != null) {
-            return apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(applicationId, vendor, tier)
+            return apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(applicationId, vendor, tier)
         }
         if (vendor != null) {
-            return apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNull(applicationId, vendor)
+            return apiKeyRepository.findByApplicationIdAndVendorAndDeletedAtIsNullOrderByIdAsc(applicationId, vendor)
         }
         return apiKeyRepository.findByApplicationIdAndDeletedAtIsNull(applicationId)
     }

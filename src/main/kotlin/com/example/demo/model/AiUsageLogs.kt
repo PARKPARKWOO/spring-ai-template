@@ -11,38 +11,43 @@ import java.time.LocalDateTime
 class AiUsageLogs(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private val id: Long,
-    private val clientId: Long,
+
+    @Column(name = "client_id")
+    private val clientId: Long? = null,
+
+    @Column(name = "api_key_id")
+    private val apiKeyId: Long? = null,
+
+    @Column(name = "application_id", length = 64)
+    private val applicationId: String? = null,
+
     private val sessionId: String,
     private val model: String,
     private val vendor: String,
     private val contentType: String,
     private val promptToken: Int,
     private val completionToken: Int,
-    @Column(columnDefinition = "TEXT")
-    private val requestMessage: String,
-    @Column(columnDefinition = "TEXT")
-    private val responseMessage: String,
     private val createdAt: LocalDateTime,
 ) {
     companion object {
         fun create(
-            clientId: Long,
+            apiKeyId: Long,
+            applicationId: String?,
             model: String,
             vendor: Vendor,
             contentType: ContentType,
-            requestMessage: String,
-            responseMessage: String,
             promptToken: Int,
             completionToken: Int,
             sessionId: String,
+            clientId: Long? = null,
         ): AiUsageLogs = AiUsageLogs(
             id = 0L,
             clientId = clientId,
+            apiKeyId = apiKeyId,
+            applicationId = applicationId,
             model = model,
             vendor = vendor.name,
             contentType = contentType.name,
-            requestMessage = requestMessage,
-            responseMessage = responseMessage,
             createdAt = LocalDateTime.now(),
             promptToken = promptToken,
             completionToken = completionToken,

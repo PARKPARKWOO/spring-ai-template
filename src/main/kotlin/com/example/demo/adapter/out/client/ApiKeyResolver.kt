@@ -10,6 +10,7 @@ import com.example.demo.model.api.ApiKey
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -47,7 +48,7 @@ class ApiKeyResolver(
 
     fun resolve(applicationId: String, vendor: Vendor, tier: ApiKeyTier): ApiKey {
         // 전용 키 시도
-        val dedicatedKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+        val dedicatedKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             applicationId, vendor, tier,
         )
         if (dedicatedKeys.isNotEmpty()) {
@@ -55,7 +56,7 @@ class ApiKeyResolver(
         }
 
         // 공용 키 풀 시도
-        val sharedKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+        val sharedKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             vendor, tier,
         )
         if (sharedKeys.isNotEmpty()) {
@@ -76,14 +77,14 @@ class ApiKeyResolver(
     }
 
     private fun resolveFromDedicated(applicationId: String, vendor: Vendor): ApiKey? {
-        val paidKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+        val paidKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             applicationId, vendor, ApiKeyTier.PAID,
         )
         if (paidKeys.isNotEmpty()) {
             selectAvailable(paidKeys, applicationId, vendor, ApiKeyTier.PAID)?.let { return it }
         }
 
-        val freeKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+        val freeKeys = apiKeyRepository.findByApplicationIdAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             applicationId, vendor, ApiKeyTier.FREE,
         )
         if (freeKeys.isNotEmpty()) {
@@ -94,14 +95,14 @@ class ApiKeyResolver(
     }
 
     private fun resolveFromSharedPool(vendor: Vendor): ApiKey? {
-        val paidKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+        val paidKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             vendor, ApiKeyTier.PAID,
         )
         if (paidKeys.isNotEmpty()) {
             selectAvailable(paidKeys, SHARED_POOL, vendor, ApiKeyTier.PAID)?.let { return it }
         }
 
-        val freeKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+        val freeKeys = apiKeyRepository.findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
             vendor, ApiKeyTier.FREE,
         )
         if (freeKeys.isNotEmpty()) {
@@ -126,7 +127,10 @@ class ApiKeyResolver(
         tier: ApiKeyTier,
     ): ApiKey? {
         val counterKey = "$poolKey:$vendor:$tier"
-        val counter = counters.computeIfAbsent(counterKey) { AtomicLong(0) }
+        // 인스턴스 부팅/재시작 시 매번 keys[0] 편중 방지 — 첫 호출 시 random 시작점
+        val counter = counters.computeIfAbsent(counterKey) {
+            AtomicLong(ThreadLocalRandom.current().nextLong(0, Int.MAX_VALUE.toLong()))
+        }
         val startIndex = counter.getAndIncrement()
 
         for (i in keys.indices) {

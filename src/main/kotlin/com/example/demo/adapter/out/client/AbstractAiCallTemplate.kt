@@ -1,12 +1,15 @@
 package com.example.demo.adapter.out.client
 
+import com.example.demo.adapter.out.persistence.AiUsageLogsRepository
 import com.example.demo.business.TokenizerService
 import com.example.demo.business.exception.AiServiceException
 import com.example.demo.common.ratelimit.ApiKeyRateLimiter
 import com.example.demo.dto.AiApiResponse
 import com.example.demo.dto.AiCallContext
 import com.example.demo.dto.ChatMessage
+import com.example.demo.model.AiUsageLogs
 import com.example.demo.model.ApiErrorCode
+import com.example.demo.model.ContentType
 import com.example.demo.model.Vendor
 import com.example.demo.model.api.ApiKey
 import org.slf4j.LoggerFactory
@@ -15,7 +18,9 @@ import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.model.ChatModel
+import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.beans.factory.annotation.Autowired
 import reactor.core.publisher.Flux
 
 /**
@@ -36,6 +41,10 @@ abstract class AbstractAiCallTemplate(
 ) : AiCallPort {
 
     private val log = LoggerFactory.getLogger(this::class.java)
+
+    // 모든 벤더 클라이언트 공통 의존성. 생성자 시그니처 충돌 피하려고 필드 주입.
+    @Autowired
+    protected lateinit var aiUsageLogsRepository: AiUsageLogsRepository
 
     abstract override fun getVendor(): Vendor
 
@@ -79,6 +88,7 @@ abstract class AbstractAiCallTemplate(
                 rateLimiter.record(apiKey.id)
                 val raw = response.result.output.text ?: "no content"
                 val result = postProcessResponse(raw, context)
+                recordUsage(response, apiKey, vendor, context, springAiMessages, result)
                 return AiApiResponse(vendor, result)
             } catch (cause: Throwable) {
                 if (is429Error(cause) && attempt < maxRetries) {
@@ -122,5 +132,41 @@ abstract class AbstractAiCallTemplate(
             message.contains("rate limit") ||
             message.contains("resource_exhausted") ||
             message.contains("too many requests")
+    }
+
+    /**
+     * 정상 응답 후 ai_usage_logs 에 사용량 기록. 실패해도 호출 결과에 영향 없도록 try-catch.
+     * 토큰 수는 ChatResponse.metadata.usage 우선, 없으면 tokenizerService 로 입력만 추정.
+     */
+    protected open fun recordUsage(
+        response: ChatResponse,
+        apiKey: ApiKey,
+        vendor: Vendor,
+        context: AiCallContext,
+        springAiMessages: List<Message>,
+        responseText: String,
+    ) {
+        try {
+            val usage = response.metadata?.usage
+            val promptTokens = usage?.promptTokens?.toInt()
+                ?: calculateTokenCountFromMessages(springAiMessages)
+            val completionTokens = usage?.completionTokens?.toInt()
+                ?: tokenizerService.getTokenCount(responseText, "")
+
+            aiUsageLogsRepository.save(
+                AiUsageLogs.create(
+                    apiKeyId = apiKey.id,
+                    applicationId = apiKey.applicationId,
+                    model = context.model ?: "unknown",
+                    vendor = vendor,
+                    contentType = ContentType.TEXT,
+                    promptToken = promptTokens,
+                    completionToken = completionTokens,
+                    sessionId = context.sessionId,
+                ),
+            )
+        } catch (e: Exception) {
+            log.warn("ai_usage_logs save 실패 (vendor={}, keyId={}): {}", vendor, apiKey.id, e.message)
+        }
     }
 }

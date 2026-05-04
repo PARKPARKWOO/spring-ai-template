@@ -6,14 +6,14 @@ import com.example.demo.model.api.ApiKey
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface ApiKeyRepository : JpaRepository<ApiKey, Long> {
-    /** Application별 벤더 API 키 목록 조회 (삭제되지 않은 것만) */
-    fun findByApplicationIdAndVendorAndDeletedAtIsNull(
+    /** Application별 벤더 API 키 목록 조회 (삭제되지 않은 것만, id ASC 안정 정렬) */
+    fun findByApplicationIdAndVendorAndDeletedAtIsNullOrderByIdAsc(
         applicationId: String,
         vendor: Vendor,
     ): List<ApiKey>
 
-    /** Application별 벤더 + 티어 API 키 목록 조회 */
-    fun findByApplicationIdAndVendorAndTierAndDeletedAtIsNull(
+    /** Application별 벤더 + 티어 API 키 목록 조회 (id ASC 안정 정렬) */
+    fun findByApplicationIdAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
         applicationId: String,
         vendor: Vendor,
         tier: ApiKeyTier,
@@ -25,8 +25,8 @@ interface ApiKeyRepository : JpaRepository<ApiKey, Long> {
     /** 전체 API 키 목록 (삭제되지 않은 것만) - admin 조회용 */
     fun findAllByDeletedAtIsNull(): List<ApiKey>
 
-    /** 공용 키 풀 조회 (application_id IS NULL) */
-    fun findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNull(
+    /** 공용 키 풀 조회 (application_id IS NULL, id ASC 안정 정렬) */
+    fun findByApplicationIdIsNullAndVendorAndTierAndDeletedAtIsNullOrderByIdAsc(
         vendor: Vendor,
         tier: ApiKeyTier,
     ): List<ApiKey>
@@ -36,4 +36,3 @@ interface ApiKeyRepository : JpaRepository<ApiKey, Long> {
         vendor: Vendor,
     ): List<ApiKey>
 }
-
