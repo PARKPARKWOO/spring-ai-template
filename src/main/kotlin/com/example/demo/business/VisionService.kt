@@ -115,6 +115,15 @@ class VisionService(
         } catch (e: TimeoutCancellationException) {
             log.warn("vision call timeout vendor={} model={}", modelSpec.vendor, modelSpec.version)
             VisionResponse.failure("timeout", modelSpec.vendor)
+        } catch (e: Throwable) {
+            // 어떤 예외든 VisionResponse.failure 로 변환해야 callSequentialFallback 의 forEach 가
+            // 다음 모델로 넘어갈 수 있음. catch 안 하면 첫 모델 throw 에서 forEach 가 break-out 되어
+            // 두 번째 fallback target 시도 자체가 안 됨.
+            log.warn(
+                "vision call failed vendor={} model={} err={}",
+                modelSpec.vendor, modelSpec.version, e.message,
+            )
+            VisionResponse.failure(e.message ?: "vision call failed", modelSpec.vendor)
         }
     }
 }
