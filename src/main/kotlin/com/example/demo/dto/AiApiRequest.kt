@@ -29,6 +29,12 @@ data class AiApiRequest(
     val maxTokens: Int? = null,
     @field:Schema(description = "요청 타입 (로깅/모니터링용). quiz, review, interview 등", example = "review")
     val requestType: String? = null,
+    @field:Schema(
+        description = "Fallback 모드. true 면 models 리스트를 순차로 시도하고 첫 성공 응답을 반환. false(기본)면 기존 fan-out (모든 모델 병렬 호출 + 응답 병합).",
+        example = "false",
+        defaultValue = "false",
+    )
+    val fallback: Boolean = false,
 )
 
 @Schema(description = "모델 스펙")

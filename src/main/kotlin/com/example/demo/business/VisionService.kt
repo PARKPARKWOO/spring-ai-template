@@ -7,6 +7,7 @@ import com.example.demo.dto.ModelSpec
 import com.example.demo.dto.VisionRequest
 import com.example.demo.dto.VisionResponse
 import com.example.demo.model.ApiErrorCode
+import com.example.demo.model.Vendor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
@@ -46,11 +47,41 @@ class VisionService(
             )
         }
 
-        request.models
-            .map { modelSpec ->
-                async(Dispatchers.IO) { callSingle(request, applicationId, modelSpec) }
+        if (request.fallback) {
+            listOf(callSequentialFallback(request, applicationId))
+        } else {
+            request.models
+                .map { modelSpec ->
+                    async(Dispatchers.IO) { callSingle(request, applicationId, modelSpec) }
+                }
+                .awaitAll()
+        }
+    }
+
+    private suspend fun callSequentialFallback(
+        request: VisionRequest,
+        applicationId: String,
+    ): VisionResponse {
+        var lastError: VisionResponse? = null
+        request.models.forEachIndexed { index, modelSpec ->
+            val response = callSingle(request, applicationId, modelSpec)
+            if (!response.isError) {
+                if (index > 0) {
+                    log.info(
+                        "Vision fallback succeeded at model index={} vendor={} model={} applicationId={}",
+                        index, modelSpec.vendor, modelSpec.version, applicationId,
+                    )
+                }
+                return response.copy(usedVendor = modelSpec.vendor, usedModel = modelSpec.version)
             }
-            .awaitAll()
+            log.warn(
+                "Vision fallback model index={} failed vendor={} model={} message={}",
+                index, modelSpec.vendor, modelSpec.version, response.result,
+            )
+            lastError = response.copy(usedVendor = modelSpec.vendor, usedModel = modelSpec.version)
+        }
+        return lastError
+            ?: VisionResponse.failure(ApiErrorCode.AI_MODELS_EMPTY.name, request.models.firstOrNull()?.vendor ?: Vendor.GOOGLE)
     }
 
     private suspend fun callSingle(
@@ -60,8 +91,8 @@ class VisionService(
     ): VisionResponse {
         val start = Instant.now()
         log.info(
-            "vision call start={} vendor={} model={} requestType={} imageCount={}",
-            start, modelSpec.vendor, modelSpec.version, request.requestType, request.images.size,
+            "vision call start={} vendor={} model={} requestType={} imageCount={} fallback={}",
+            start, modelSpec.vendor, modelSpec.version, request.requestType, request.images.size, request.fallback,
         )
 
         val client = visionFactory.getClient(modelSpec.vendor)

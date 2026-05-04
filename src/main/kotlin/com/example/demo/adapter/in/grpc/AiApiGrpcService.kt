@@ -45,6 +45,7 @@ class AiApiGrpcService(
                     timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
                     maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
                     requestType = request.requestType.takeIf { it.isNotBlank() },
+                    fallback = if (request.hasFallback()) request.fallback else false,
                 )
                 aiService.call(dto, applicationId)
             }
@@ -54,13 +55,13 @@ class AiApiGrpcService(
                 if (first == null) {
                     Mono.error(IllegalStateException("No response"))
                 } else {
-                    Mono.just(
-                        AiProto.AiApiResponse.newBuilder()
-                            .setVendor(vendorToProto(first.vendor))
-                            .setResult(first.result ?: "")
-                            .setIsError(first.isError)
-                            .build()
-                    )
+                    val builder = AiProto.AiApiResponse.newBuilder()
+                        .setVendor(vendorToProto(first.vendor))
+                        .setResult(first.result ?: "")
+                        .setIsError(first.isError)
+                    first.usedVendor?.let { builder.setUsedVendor(it.name) }
+                    first.usedModel?.let { builder.setUsedModel(it) }
+                    Mono.just(builder.build())
                 }
             }
             .subscribe(
@@ -129,6 +130,7 @@ class AiApiGrpcService(
                     timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
                     maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
                     requestType = request.requestType.takeIf { it.isNotBlank() },
+                    fallback = if (request.hasFallback()) request.fallback else false,
                 )
                 visionService.call(dto, applicationId)
             }
@@ -138,13 +140,13 @@ class AiApiGrpcService(
                 if (first == null) {
                     Mono.error(IllegalStateException("No response"))
                 } else {
-                    Mono.just(
-                        AiProto.AiVisionResponse.newBuilder()
-                            .setVendor(vendorToProto(first.vendor))
-                            .setResult(first.result)
-                            .setIsError(first.isError)
-                            .build()
-                    )
+                    val builder = AiProto.AiVisionResponse.newBuilder()
+                        .setVendor(vendorToProto(first.vendor))
+                        .setResult(first.result)
+                        .setIsError(first.isError)
+                    first.usedVendor?.let { builder.setUsedVendor(it.name) }
+                    first.usedModel?.let { builder.setUsedModel(it) }
+                    Mono.just(builder.build())
                 }
             }
             .subscribe(
@@ -175,6 +177,7 @@ class AiApiGrpcService(
                     timeoutSeconds = if (request.hasTimeoutSeconds()) request.timeoutSeconds else null,
                     maxTokens = if (request.hasMaxTokens()) request.maxTokens else null,
                     requestType = request.requestType.takeIf { it.isNotBlank() },
+                    fallback = if (request.hasFallback()) request.fallback else false,
                 )
                 visionService.call(dto, applicationId)
             }
@@ -184,13 +187,13 @@ class AiApiGrpcService(
                 if (first == null) {
                     Mono.error(IllegalStateException("No response"))
                 } else {
-                    Mono.just(
-                        AiProto.AiDocumentResponse.newBuilder()
-                            .setVendor(vendorToProto(first.vendor))
-                            .setResult(first.result)
-                            .setIsError(first.isError)
-                            .build()
-                    )
+                    val builder = AiProto.AiDocumentResponse.newBuilder()
+                        .setVendor(vendorToProto(first.vendor))
+                        .setResult(first.result)
+                        .setIsError(first.isError)
+                    first.usedVendor?.let { builder.setUsedVendor(it.name) }
+                    first.usedModel?.let { builder.setUsedModel(it) }
+                    Mono.just(builder.build())
                 }
             }
             .subscribe(
