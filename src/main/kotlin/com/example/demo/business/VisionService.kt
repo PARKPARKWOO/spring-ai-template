@@ -95,20 +95,21 @@ class VisionService(
             start, modelSpec.vendor, modelSpec.version, request.requestType, request.images.size, request.fallback,
         )
 
-        val client = visionFactory.getClient(modelSpec.vendor)
-        val context = AiCallContext(
-            messages = request.messages,
-            applicationId = applicationId,
-            sessionId = request.sessionId,
-            maxTokens = request.maxTokens,
-            jsonSchema = null,
-            model = modelSpec.version,
-            vendorOptions = modelSpec.vendorOptions,
-            requestType = request.requestType,
-            timeoutSeconds = request.timeoutSeconds,
-        )
-
         return try {
+            // visionFactory.getClient 도 try 블록 안에서 실행 — vendor 미지원(AI_VENDOR_NOT_SUPPORTED)
+            // 같은 throw 가 forEach 를 break-out 시키지 않게 한다 (이전 핫픽스의 후속).
+            val client = visionFactory.getClient(modelSpec.vendor)
+            val context = AiCallContext(
+                messages = request.messages,
+                applicationId = applicationId,
+                sessionId = request.sessionId,
+                maxTokens = request.maxTokens,
+                jsonSchema = null,
+                model = modelSpec.version,
+                vendorOptions = modelSpec.vendorOptions,
+                requestType = request.requestType,
+                timeoutSeconds = request.timeoutSeconds,
+            )
             withTimeout(context.effectiveTimeoutMs()) {
                 client.call(context, request.images)
             }
@@ -117,8 +118,7 @@ class VisionService(
             VisionResponse.failure("timeout", modelSpec.vendor)
         } catch (e: Throwable) {
             // 어떤 예외든 VisionResponse.failure 로 변환해야 callSequentialFallback 의 forEach 가
-            // 다음 모델로 넘어갈 수 있음. catch 안 하면 첫 모델 throw 에서 forEach 가 break-out 되어
-            // 두 번째 fallback target 시도 자체가 안 됨.
+            // 다음 모델로 넘어갈 수 있음.
             log.warn(
                 "vision call failed vendor={} model={} err={}",
                 modelSpec.vendor, modelSpec.version, e.message,
