@@ -42,6 +42,12 @@ abstract class AbstractAiCallTemplate(
     protected abstract fun generateModel(apiKey: ApiKey): ChatModel
     protected abstract fun generatePrompt(context: AiCallContext, messages: List<Message>): Prompt
 
+    /**
+     * 벤더 응답 텍스트에 대한 후처리 hook. 기본은 원문 그대로 반환.
+     * Anthropic 처럼 native JSON 강제가 없는 벤더에서 ```json fence 제거 등에 사용.
+     */
+    protected open fun postProcessResponse(text: String, context: AiCallContext): String = text
+
     protected fun convertToSpringAiMessages(chatMessages: List<ChatMessage>): List<Message> =
         chatMessages.map { msg ->
             when (msg) {
@@ -71,7 +77,8 @@ abstract class AbstractAiCallTemplate(
             try {
                 val response = chatModel.call(prompt)
                 rateLimiter.record(apiKey.id)
-                val result = response.result.output.text ?: "no content"
+                val raw = response.result.output.text ?: "no content"
+                val result = postProcessResponse(raw, context)
                 return AiApiResponse(vendor, result)
             } catch (cause: Throwable) {
                 if (is429Error(cause) && attempt < maxRetries) {
